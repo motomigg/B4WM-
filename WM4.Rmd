@@ -1,0 +1,10 @@
+---
+title: "確率判断"
+output: html_document
+---
+
+いらない変数削除
+```{r}
+#remove()
+```
+

@@ -1,0 +1,286 @@
+---
+title: "真理値表"
+output: html_document
+---
+
+
+
+
+いらない変数削除
+```{r}
+#remove()
+```
+
+
+型確認
+```{r}
+mode(raw_data$Q71.1_1)
+```
+
+型変換
+```{r}
+IFpTHENq_TT = as.numeric(raw_data$Q71.1_1)
+IFpTHENq_TF = as.numeric(raw_data$Q71.1_2)
+IFpTHENq_FT = as.numeric(raw_data$Q71.1_3)
+IFpTHENq_FF = as.numeric(raw_data$Q71.1_4)
+
+IFpTHENq_TT2 = as.numeric(raw_data$Q75.1_1)
+IFpTHENq_TF2 = as.numeric(raw_data$Q75.1_2)
+IFpTHENq_FT2 = as.numeric(raw_data$Q75.1_3)
+IFpTHENq_FF2 = as.numeric(raw_data$Q75.1_4)
+
+IFpTHENnotq_TT = as.numeric(raw_data$Q72.1_1)
+IFpTHENnotq_TF = as.numeric(raw_data$Q72.1_2)
+IFpTHENnotq_FT = as.numeric(raw_data$Q72.1_3)
+IFpTHENnotq_FF = as.numeric(raw_data$Q72.1_4)
+
+IFpTHENnotq_TT2 = as.numeric(raw_data$Q76.1_1)
+IFpTHENnotq_TF2 = as.numeric(raw_data$Q76.1_2)
+IFpTHENnotq_FT2 = as.numeric(raw_data$Q76.1_3)
+IFpTHENnotq_FF2 = as.numeric(raw_data$Q76.1_4)
+
+IFnotpTHENq_TT = as.numeric(raw_data$Q73.1_1)
+IFnotpTHENq_TF = as.numeric(raw_data$Q73.1_2)
+IFnotpTHENq_FT = as.numeric(raw_data$Q73.1_3)
+IFnotpTHENq_FF = as.numeric(raw_data$Q73.1_4)
+
+IFnotpTHENq_TT2 = as.numeric(raw_data$Q77.1_1)
+IFnotpTHENq_TF2 = as.numeric(raw_data$Q77.1_2)
+IFnotpTHENq_FT2 = as.numeric(raw_data$Q77.1_3)
+IFnotpTHENq_FF2 = as.numeric(raw_data$Q77.1_4)
+
+IFnotpTHENnotq_TT = as.numeric(raw_data$Q74.1_1)
+IFnotpTHENnotq_TF = as.numeric(raw_data$Q74.1_2)
+IFnotpTHENnotq_FT = as.numeric(raw_data$Q74.1_3)
+IFnotpTHENnotq_FF = as.numeric(raw_data$Q74.1_4)
+
+IFnotpTHENnotq_TT2 = as.numeric(raw_data$Q78.1_1)
+IFnotpTHENnotq_TF2 = as.numeric(raw_data$Q78.1_2)
+IFnotpTHENnotq_FT2 = as.numeric(raw_data$Q78.1_3)
+IFnotpTHENnotq_FF2 = as.numeric(raw_data$Q78.1_4)
+
+```
+
+NAの処理
+```{r}
+IFpTHENq_TT = IFpTHENq_TT[3:96]
+IFpTHENq_TF = IFpTHENq_TF[3:96]
+IFpTHENq_FT = IFpTHENq_FT[3:96]
+IFpTHENq_FF = IFpTHENq_FF[3:96]
+
+IFpTHENq_TT2 = IFpTHENq_TT2[3:96]
+IFpTHENq_TF2 = IFpTHENq_TF2[3:96]
+IFpTHENq_FT2 = IFpTHENq_FT2[3:96]
+IFpTHENq_FF2 = IFpTHENq_FF2[3:96]
+
+IFpTHENnotq_TT = IFpTHENnotq_TT[3:96]
+IFpTHENnotq_TF = IFpTHENnotq_TF[3:96]
+IFpTHENnotq_FT = IFpTHENnotq_FT[3:96]
+IFpTHENnotq_FF = IFpTHENnotq_FF[3:96]
+
+IFpTHENnotq_TT2 = IFpTHENnotq_TT2[3:96]
+IFpTHENnotq_TF2 = IFpTHENnotq_TF2[3:96]
+IFpTHENnotq_FT2 = IFpTHENnotq_FT2[3:96]
+IFpTHENnotq_FF2 = IFpTHENnotq_FF2[3:96]
+
+IFnotpTHENq_TT = IFnotpTHENq_TT[3:96]
+IFnotpTHENq_TF = IFnotpTHENq_TF[3:96]
+IFnotpTHENq_FT = IFnotpTHENq_FT[3:96]
+IFnotpTHENq_FF = IFnotpTHENq_FF[3:96]
+
+IFnotpTHENq_TT2 = IFnotpTHENq_TT2[3:96]
+IFnotpTHENq_TF2 = IFnotpTHENq_TF2[3:96]
+IFnotpTHENq_FT2 = IFnotpTHENq_FT2[3:96]
+IFnotpTHENq_FF2 = IFnotpTHENq_FF2[3:96]
+
+IFnotpTHENnotq_TT = IFnotpTHENnotq_TT[3:96]
+IFnotpTHENnotq_TF = IFnotpTHENnotq_TF[3:96]
+IFnotpTHENnotq_FT = IFnotpTHENnotq_FT[3:96]
+IFnotpTHENnotq_FF = IFnotpTHENnotq_FF[3:96]
+
+IFnotpTHENnotq_TT2 = IFnotpTHENnotq_TT2[3:96]
+IFnotpTHENnotq_TF2 = IFnotpTHENnotq_TF2[3:96]
+IFnotpTHENnotq_FT2 = IFnotpTHENnotq_FT2[3:96]
+IFnotpTHENnotq_FF2 = IFnotpTHENnotq_FF2[3:96]
+
+
+```
+
+データの確認
+```{r}
+plot(IFpTHENq_TT2)
+```
+
+
+
+割合の確認
+合計94のデータ
+```{r}
+TTofT <- c(sum(as.integer(IFpTHENq_TT == 1)),
+sum(as.integer(IFpTHENq_TT2 == 1)),
+sum(as.integer(IFpTHENnotq_TT == 1)),
+sum(as.integer(IFpTHENnotq_TT2 == 1)),
+sum(as.integer(IFnotpTHENq_TT == 1)),
+sum(as.integer(IFnotpTHENq_TT2 == 1)),
+sum(as.integer(IFnotpTHENnotq_TT == 1)),
+sum(as.integer(IFnotpTHENnotq_TT2 == 1)))
+
+TTofF <- c(sum(as.integer(IFpTHENq_TT == 2)),
+sum(as.integer(IFpTHENq_TT2 == 2)),
+sum(as.integer(IFpTHENnotq_TT == 2)),
+sum(as.integer(IFpTHENnotq_TT2 == 2)),
+sum(as.integer(IFnotpTHENq_TT == 2)),
+sum(as.integer(IFnotpTHENq_TT2 == 2)),
+sum(as.integer(IFnotpTHENnotq_TT == 2)),
+sum(as.integer(IFnotpTHENnotq_TT2 == 2)))
+
+TTofNS <- c(sum(as.integer(IFpTHENq_TT == 3)),
+sum(as.integer(IFpTHENq_TT2 == 3)),
+sum(as.integer(IFpTHENnotq_TT == 3)),
+sum(as.integer(IFpTHENnotq_TT2 == 3)),
+sum(as.integer(IFnotpTHENq_TT == 3)),
+sum(as.integer(IFnotpTHENq_TT2 == 3)),
+sum(as.integer(IFnotpTHENnotq_TT == 3)),
+sum(as.integer(IFnotpTHENnotq_TT2 == 3)))
+
+
+TFofT <- c(sum(as.integer(IFpTHENq_TF == 1)),
+sum(as.integer(IFpTHENq_TF2 == 1)),
+sum(as.integer(IFpTHENnotq_TF == 1)),
+sum(as.integer(IFpTHENnotq_TF2 == 1)),
+sum(as.integer(IFnotpTHENq_TF == 1)),
+sum(as.integer(IFnotpTHENq_TF2 == 1)),
+sum(as.integer(IFnotpTHENnotq_TF == 1)),
+sum(as.integer(IFnotpTHENnotq_TF2 == 1)))
+
+TFofF <- c(sum(as.integer(IFpTHENq_TF == 2)),
+sum(as.integer(IFpTHENq_TF2 == 2)),
+sum(as.integer(IFpTHENnotq_TF == 2)),
+sum(as.integer(IFpTHENnotq_TF2 == 2)),
+sum(as.integer(IFnotpTHENq_TF == 2)),
+sum(as.integer(IFnotpTHENq_TF2 == 2)),
+sum(as.integer(IFnotpTHENnotq_TF == 2)),
+sum(as.integer(IFnotpTHENnotq_TF2 == 2)))
+
+TFofNS <- c(sum(as.integer(IFpTHENq_TF == 3)),
+sum(as.integer(IFpTHENq_TF2 == 3)),
+sum(as.integer(IFpTHENnotq_TF == 3)),
+sum(as.integer(IFpTHENnotq_TF2 == 3)),
+sum(as.integer(IFnotpTHENq_TF == 3)),
+sum(as.integer(IFnotpTHENq_TF2 == 3)),
+sum(as.integer(IFnotpTHENnotq_TF == 3)),
+sum(as.integer(IFnotpTHENnotq_TF2 == 3)))
+
+FTofT <- c(sum(as.integer(IFpTHENq_FT == 1)),
+sum(as.integer(IFpTHENq_FT2 == 1)),
+sum(as.integer(IFpTHENnotq_FT == 1)),
+sum(as.integer(IFpTHENnotq_FT2 == 1)),
+sum(as.integer(IFnotpTHENq_FT == 1)),
+sum(as.integer(IFnotpTHENq_FT2 == 1)),
+sum(as.integer(IFnotpTHENnotq_FT == 1)),
+sum(as.integer(IFnotpTHENnotq_FT2 == 1)))
+
+FTofF <- c(sum(as.integer(IFpTHENq_FT == 2)),
+sum(as.integer(IFpTHENq_FT2 == 2)),
+sum(as.integer(IFpTHENnotq_FT == 2)),
+sum(as.integer(IFpTHENnotq_FT2 == 2)),
+sum(as.integer(IFnotpTHENq_FT == 2)),
+sum(as.integer(IFnotpTHENq_FT2 == 2)),
+sum(as.integer(IFnotpTHENnotq_FT == 2)),
+sum(as.integer(IFnotpTHENnotq_FT2 == 2)))
+
+FTofNS <- c(sum(as.integer(IFpTHENq_FT == 3)),
+sum(as.integer(IFpTHENq_FT2 == 3)),
+sum(as.integer(IFpTHENnotq_FT == 3)),
+sum(as.integer(IFpTHENnotq_FT2 == 3)),
+sum(as.integer(IFnotpTHENq_FT == 3)),
+sum(as.integer(IFnotpTHENq_FT2 == 3)),
+sum(as.integer(IFnotpTHENnotq_FT == 3)),
+sum(as.integer(IFnotpTHENnotq_FT2 == 3)))
+
+FFofT <- c(sum(as.integer(IFpTHENq_FF == 1)),
+sum(as.integer(IFpTHENq_FF2 == 1)),
+sum(as.integer(IFpTHENnotq_FF == 1)),
+sum(as.integer(IFpTHENnotq_FF2 == 1)),
+sum(as.integer(IFnotpTHENq_FF == 1)),
+sum(as.integer(IFnotpTHENq_FF2 == 1)),
+sum(as.integer(IFnotpTHENnotq_FF == 1)),
+sum(as.integer(IFnotpTHENnotq_FF2 == 1)))
+
+FFofF <- c(sum(as.integer(IFpTHENq_FF == 2)),
+sum(as.integer(IFpTHENq_FF2 == 2)),
+sum(as.integer(IFpTHENnotq_FF == 2)),
+sum(as.integer(IFpTHENnotq_FF2 == 2)),
+sum(as.integer(IFnotpTHENq_FF == 2)),
+sum(as.integer(IFnotpTHENq_FF2 == 2)),
+sum(as.integer(IFnotpTHENnotq_FF == 2)),
+sum(as.integer(IFnotpTHENnotq_FF2 == 2)))
+
+FFofNS <- c(sum(as.integer(IFpTHENq_FF == 3)),
+sum(as.integer(IFpTHENq_FF2 == 3)),
+sum(as.integer(IFpTHENnotq_FF == 3)),
+sum(as.integer(IFpTHENnotq_FF2 == 3)),
+sum(as.integer(IFnotpTHENq_FF == 3)),
+sum(as.integer(IFnotpTHENq_FF2 == 3)),
+sum(as.integer(IFnotpTHENnotq_FF == 3)),
+sum(as.integer(IFnotpTHENnotq_FF2 == 3)))
+
+
+```
+
+
+
+
+
+
+割合のデータフレーム作成
+?=NS(not Sure)
+```{r}
+TT_table <-  data.frame(T=TTofT,F=TTofF, NS = TTofNS)
+rownames(TT_table)<- c("IFpTHENq","IFpTHENq2","IFpTHENnotq","IFpTHENnotq2","IFnotpTHENq","IFnotpTHENq2","IFnotpTHENnotq","IFnotpTHENnotq2")
+
+TF_table <-  data.frame(T=TFofT,F=TFofF,'NS' = TFofNS)
+rownames(TF_table)<- c("IFpTHENq","IFpTHENq2","IFpTHENnotq","IFpTHENnotq2","IFnotpTHENq","IFnotpTHENq2","IFnotpTHENnotq","IFnotpTHENnotq2")
+
+FT_table <-  data.frame(T=FTofT,F=FTofF,NS = FTofNS)
+rownames(FT_table)<- c("IFpTHENq","IFpTHENq2","IFpTHENnotq","IFpTHENnotq2","IFnotpTHENq","IFnotpTHENq2","IFnotpTHENnotq","IFnotpTHENnotq2")
+
+FF_table <-  data.frame(T=FFofT,F=FFofF,NS = FFofNS)
+rownames(FF_table)<- c("IFpTHENq","IFpTHENq2","IFpTHENnotq","IFpTHENnotq2","IFnotpTHENq","IFnotpTHENq2","IFnotpTHENnotq","IFnotpTHENnotq2")
+
+
+```
+
+
+TT
+```{r}
+TT_table
+```
+
+TF
+```{r}
+TF_table
+```
+
+
+FT
+```{r}
+FT_table
+```
+
+FF
+```{r}
+FF_table
+```
+
+WMと真理値
+```{r}
+plot(WMScore,IFnotpTHENnotq_FF2)
+```
+
+
+
+
+
+
+

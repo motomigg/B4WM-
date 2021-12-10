@@ -1,0 +1,337 @@
+---
+title: "WM"
+output: html_document
+---
+データの準備
+```{r}
+library(MASS)
+library(tidyverse)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(ggthemes)
+library(car)
+library(corrplot)
+library(caret)
+library(makedummies)
+library(tidyverse)
+
+raw_data = read_csv("raw_data.csv")
+```
+
+いらない変数削除
+```{r}
+#remove()
+```
+
+
+データ型確認
+```{r}
+mode(raw_data$SC42)
+mode(raw_data$Q3.3_1)
+```
+
+型変換
+
+```{r}
+EN1 = as.numeric(raw_data$SC0)
+EN2  = as.numeric(raw_data$SC1)
+EN3  = as.numeric(raw_data$SC2)
+Ma1  = as.numeric(raw_data$SC3)
+Ma2 = as.numeric(raw_data$SC4)
+Ma3 = as.numeric(raw_data$SC5)
+PracticeMa1 = as.numeric(raw_data$SC6)
+PracticeEN1 = as.numeric(raw_data$SC7)
+PracticeMa2 = as.numeric(raw_data$SC8)
+PracticeEN2 = as.numeric(raw_data$SC9)
+PracticeMa3 = as.numeric(raw_data$SC10)
+PracticeEN3 = as.numeric(raw_data$SC11)
+ProductionMa1 = as.numeric(raw_data$SC12)
+ProductionEN3a = as.numeric(raw_data$SC13)
+ProductionMa2 = as.numeric(raw_data$SC14)
+ProductionEN3b = as.numeric(raw_data$SC15)
+ProductionMa3 = as.numeric(raw_data$SC16)
+ProductionEN3c = as.numeric(raw_data$SC17)
+ProductionMa4 = as.numeric(raw_data$SC18)
+ProductionEN4a = as.numeric(raw_data$SC19)
+ProductionMa5 = as.numeric(raw_data$SC20)
+ProductionEN4b = as.numeric(raw_data$SC21)
+ProductionMa6 = as.numeric(raw_data$SC22)
+ProductionEN4c = as.numeric(raw_data$SC23)
+ProductionMa7 = as.numeric(raw_data$SC24)
+ProductionEN5a = as.numeric(raw_data$SC25)
+ProductionMa8 = as.numeric(raw_data$SC26)
+ProductionMa9 = as.numeric(raw_data$SC27)
+ProductionEN5b= as.numeric(raw_data$SC28)
+ProductionMa10 = as.numeric(raw_data$SC29)
+ProductionEN5c = as.numeric(raw_data$SC30)
+ProductionMa11 = as.numeric(raw_data$SC31)
+ProductionEN6a = as.numeric(raw_data$SC32)
+ProductionMa12 = as.numeric(raw_data$SC33)
+ProductionEN6b = as.numeric(raw_data$SC34)
+ProductionEN6c = as.numeric(raw_data$SC35)
+ProductionMa13 = as.numeric(raw_data$SC36)
+ProductionEN7a = as.numeric(raw_data$SC37)
+ProductionMa14 = as.numeric(raw_data$SC38)
+ProductionEN7b = as.numeric(raw_data$SC39)
+ProductionMa15 = as.numeric(raw_data$SC40)
+ProductionEN7c = as.numeric(raw_data$SC41)
+
+partern1 = as.numeric(raw_data$SC42)
+partern2 = as.numeric(raw_data$SC43)
+partern3 = as.numeric(raw_data$SC44)
+parternA = as.numeric(raw_data$SC45)
+parternB = as.numeric(raw_data$SC46)
+parternC = as.numeric(raw_data$SC47)
+
+age = as.numeric(raw_data$Q3.3_1)
+
+```
+
+NAの処理
+```{r}
+age[is.na(age)] <- 0
+
+partern1[is.na(partern1)] <- 0
+partern2[is.na(partern2)] <- 0
+partern3[is.na(partern3)] <- 0
+parternA[is.na(parternA)] <- 0
+parternB[is.na(parternB)] <- 0
+parternC[is.na(parternC)] <- 0
+
+EN1[is.na(EN1)] <- 0
+EN2[is.na(EN2)] <- 0
+EN3[is.na(EN3)] <- 0
+Ma1[is.na(Ma1)] <- 0
+Ma2[is.na(Ma2)] <- 0
+Ma3[is.na(Ma3)] <- 0
+
+ProductionMa1[is.na(ProductionMa1)] <- 0
+ProductionMa2[is.na(ProductionMa2)] <- 0
+ProductionMa3[is.na(ProductionMa3)] <- 0
+ProductionMa4[is.na(ProductionMa4)] <- 0
+ProductionMa5[is.na(ProductionMa5)] <- 0
+ProductionMa6[is.na(ProductionMa6)] <- 0
+ProductionMa7[is.na(ProductionMa7)] <- 0
+ProductionMa8[is.na(ProductionMa8)] <- 0
+ProductionMa9[is.na(ProductionMa9)] <- 0
+ProductionMa10[is.na(ProductionMa10)] <- 0
+ProductionMa11[is.na(ProductionMa11)] <- 0
+ProductionMa12[is.na(ProductionMa12)] <- 0
+ProductionMa13[is.na(ProductionMa13)] <- 0
+ProductionMa14[is.na(ProductionMa14)] <- 0
+ProductionMa15[is.na(ProductionMa15)] <- 0
+ProductionEN3a[is.na(ProductionEN3a)] <- 0
+ProductionEN3b[is.na(ProductionEN3b)] <- 0
+ProductionEN3c[is.na(ProductionEN3c)] <- 0
+ProductionEN4a[is.na(ProductionEN4a)] <- 0
+ProductionEN4b[is.na(ProductionEN4b)] <- 0
+ProductionEN4c[is.na(ProductionEN4c)] <- 0
+ProductionEN5a[is.na(ProductionEN5a)] <- 0
+ProductionEN5b[is.na(ProductionEN5b)] <- 0
+ProductionEN5c[is.na(ProductionEN5c)] <- 0
+ProductionEN6a[is.na(ProductionEN6a)] <- 0
+ProductionEN6b[is.na(ProductionEN6b)] <- 0
+ProductionEN6c[is.na(ProductionEN6c)] <- 0
+ProductionEN7a[is.na(ProductionEN7a)] <- 0
+ProductionEN7b[is.na(ProductionEN7b)] <- 0
+ProductionEN7c[is.na(ProductionEN7c)] <- 0
+
+PracticeMa1[is.na(PracticeMa1)] <- 0
+PracticeMa2[is.na(PracticeMa2)] <- 0
+PracticeMa3[is.na(PracticeMa3)] <- 0
+PracticeEN1[is.na(PracticeEN1)] <- 0
+PracticeEN2[is.na(PracticeEN2)] <- 0
+PracticeEN3[is.na(PracticeEN3)] <- 0
+```
+
+
+
+WMのScore
+```{r}
+for (i in 1:96){
+   partern1[i] <- round(partern1[i]*1.333 , digits=1)
+}
+partern1
+```
+
+WMのScore
+```{r}
+for (i in 1:96){
+   partern2[i] <- round(partern2[i]*1.333 , digits=1)
+}
+partern2
+```
+
+WMのScore
+```{r}
+for (i in 1:96){
+   partern3[i] <- round(partern3[i]*1.333 , digits=1)
+}
+partern3
+```
+
+plot
+```{r}
+plot(partern1,xlab="Span Scores(%)")
+plot(partern2,xlab="Span Scores(%)")
+plot(partern3,xlab="Span Scores(%)")
+```
+
+
+
+データの準備
+```{r}
+
+WMScore<-0
+WMScore<- WMScore[1:94]
+WMSC<-0
+WMSC<- WMSC[1:94]
+for(i in 1:94){
+  WMScore[i] <- 0
+  WMSC[i]<- 0
+}
+
+```
+
+
+
+データの結合
+```{r}
+j=1
+
+for(i in 3:96){
+  if(partern1[i]> 0) {
+    WMScore[j] <- partern1[i]
+  } else if(partern2[i] > 0) {
+    WMScore[j] <- partern2[i]
+  } else if(partern3[i] > 0) {
+    WMScore[j] <- partern3[i]
+  }
+  j<- j+1
+}
+```
+
+
+データ結合
+```{r}
+plot(WMScore,xlab="Span Scores(%)")
+```
+
+
+完全加点法の準備
+```{r}
+j=1
+for(i in 3:96){
+  SC<- 0
+  if(ProductionEN3a[i] == 3){
+     SC<- SC+3
+  }
+   if(ProductionEN3b[i] == 3){
+      SC<- SC+3
+   }
+   if(ProductionEN3c[i] == 3){
+      SC<- SC+3
+   }
+   if(ProductionEN4a[i] == 4){
+      SC<- SC+4
+   }
+   if(ProductionEN4b[i] == 4){
+    SC<- SC+4
+   }
+   if(ProductionEN4c[i] == 4){
+    SC<- SC+4
+   }
+   if(ProductionEN5a[i] == 5){
+    SC<- SC+5
+   }
+   if(ProductionEN5b[i] == 5){
+    SC<- SC+5
+   }
+   if(ProductionEN5c[i] == 5){
+    SC<- SC+5
+   }
+   if(ProductionEN6a[i] == 6){
+    SC<- SC+6
+   }
+   if(ProductionEN6b[i] == 6){
+    SC<- SC+6
+   }
+   if(ProductionEN6c[i] == 6){
+    SC<- SC+6
+   }
+   if(ProductionEN7a[i] == 7){
+    SC<- SC+7
+   }
+   if(ProductionEN7b[i] == 7){
+    SC<- SC+7
+   }
+   if(ProductionEN7c[i] == 7){
+    SC<- SC+7
+   }
+  WMSC[j]<-SC
+  j<-j+1
+}
+
+```
+
+```{r}
+for (i in 1:94){
+   WMSC[i] <- round(WMSC[i]*1.333 , digits=1)
+}
+WMSC
+```
+
+
+
+
+
+
+完全加点法
+```{r}
+WMSC
+mean(WMSC)
+sd(WMSC)
+```
+
+部分加点方
+```{r}
+WMScore
+mean(WMScore)
+sd(WMScore)
+```
+
+
+年齢
+```{r}
+age<-age[3:96]
+age
+```
+
+年齢平均
+```{r}
+mean(age)
+```
+
+
+年齢とWM
+```{r}
+#plot(age,WMSC)
+plot(age,WMScore,ylab = "Partial point addition method")
+plot(age,WMSC,ylab="Complete point addition method")
+```
+
+年齢とWMの相関係数(ピアソン)
+```{r}
+cor(age,WMSC)
+cor(age,WMScore)
+#cor(age,WMScore,method="s")
+#cor(age,WMSC,method="s")
+```
+
+
+
+
+
+
+

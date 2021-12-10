@@ -1,0 +1,373 @@
+---
+title: "raw_data"
+output: html_document
+---
+
+データの準備
+```{r}
+library(MASS)
+library(tidyverse)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(ggthemes)
+library(car)
+library(corrplot)
+library(caret)
+library(makedummies)
+
+data = read_csv("18rd193-2021-渡邊元樹-OSPAN-条件文_2021年12月3日_22.16.csv")
+```
+
+確認
+```{r}
+#str(data)
+```
+
+データがちゃんと入っているか
+RだけではCSVが大きすぎて見れないため他のediterでみながら変数合わせ終了
+```{r}
+plot(data$Progress)
+plot(data$SC47)
+```
+
+
+データ型の確認
+```{r}
+mode(data$SC0)
+mode(data$Progress)
+mode(data$SC1)
+mode(data$SC2)
+mode(data$SC3)
+mode(data$SC4)
+mode(data$SC5)
+mode(data$SC6)
+mode(data$SC7)
+mode(data$SC8)
+mode(data$SC9)
+mode(data$SC10)
+mode(data$SC11)
+mode(data$SC12)
+mode(data$SC13)
+mode(data$SC14)
+mode(data$SC15)
+mode(data$SC16)
+mode(data$SC17)
+mode(data$SC18)
+mode(data$SC19)
+mode(data$SC20)
+mode(data$SC21)
+mode(data$SC22)
+mode(data$SC23)
+mode(data$SC24)
+mode(data$SC25)
+mode(data$SC26)
+mode(data$SC27)
+mode(data$SC28)
+mode(data$SC29)
+mode(data$SC30)
+mode(data$SC31)
+mode(data$SC32)
+mode(data$SC33)
+mode(data$SC34)
+mode(data$SC35)
+mode(data$SC36)
+mode(data$SC37)
+mode(data$SC38)
+mode(data$SC39)
+mode(data$SC40)
+mode(data$SC41)
+mode(data$SC42)
+mode(data$SC43)
+mode(data$SC44)
+mode(data$SC45)
+mode(data$SC46)
+mode(data$SC47)
+
+#for(i in 0:47){
+ # mode(data$SC[i])
+#}
+```
+
+データの型変換
+```{r}
+EN1 = as.numeric(data$SC0)
+EN2  = as.numeric(data$SC1)
+EN3  = as.numeric(data$SC2)
+Ma1  = as.numeric(data$SC3)
+Ma2 = as.numeric(data$SC4)
+Ma3 = as.numeric(data$SC5)
+PracticeMa1 = as.numeric(data$SC6)
+PracticeEN1 = as.numeric(data$SC7)
+PracticeMa2 = as.numeric(data$SC8)
+PracticeEN2 = as.numeric(data$SC9)
+PracticeMa3 = as.numeric(data$SC10)
+PracticeEN3 = as.numeric(data$SC11)
+ProductionMa1 = as.numeric(data$SC12)
+ProductionEN3a = as.numeric(data$SC13)
+ProductionMa2 = as.numeric(data$SC14)
+ProductionEN3b = as.numeric(data$SC15)
+ProductionMa3 = as.numeric(data$SC16)
+ProductionEN3c = as.numeric(data$SC17)
+ProductionMa4 = as.numeric(data$SC18)
+ProductionEN4a = as.numeric(data$SC19)
+ProductionMa5 = as.numeric(data$SC20)
+ProductionEN4b = as.numeric(data$SC21)
+ProductionMa6 = as.numeric(data$SC22)
+ProductionEN4c = as.numeric(data$SC23)
+ProductionMa7 = as.numeric(data$SC24)
+ProductionEN5a = as.numeric(data$SC25)
+ProductionMa8 = as.numeric(data$SC26)
+ProductionMa9 = as.numeric(data$SC27)
+ProductionEN5b= as.numeric(data$SC28)
+ProductionMa10 = as.numeric(data$SC29)
+ProductionEN5c = as.numeric(data$SC30)
+ProductionMa11 = as.numeric(data$SC31)
+ProductionEN6a = as.numeric(data$SC32)
+ProductionMa12 = as.numeric(data$SC33)
+ProductionEN6b = as.numeric(data$SC34)
+ProductionEN6c = as.numeric(data$SC35)
+ProductionMa13 = as.numeric(data$SC36)
+ProductionEN7a = as.numeric(data$SC37)
+ProductionMa14 = as.numeric(data$SC38)
+ProductionEN7b = as.numeric(data$SC39)
+ProductionMa15 = as.numeric(data$SC40)
+ProductionEN7c = as.numeric(data$SC41)
+
+partern1 = as.numeric(data$SC42)
+partern2 = as.numeric(data$SC43)
+partern3 = as.numeric(data$SC44)
+parternA = as.numeric(data$SC45)
+parternB = as.numeric(data$SC46)
+parternC = as.numeric(data$SC47)
+
+```
+
+データ型の確認
+```{r}
+mode(partern1)
+mode(partern2)
+mode(partern3)
+mode(parternA)
+mode(parternB)
+mode(parternC)
+```
+
+NAの処理
+```{r}
+partern1[is.na(partern1)] <- 0
+partern2[is.na(partern2)] <- 0
+partern3[is.na(partern3)] <- 0
+parternA[is.na(parternA)] <- 0
+parternB[is.na(parternB)] <- 0
+parternC[is.na(parternC)] <- 0
+
+EN1[is.na(EN1)] <- 0
+EN2[is.na(EN2)] <- 0
+EN3[is.na(EN3)] <- 0
+Ma1[is.na(Ma1)] <- 0
+Ma2[is.na(Ma2)] <- 0
+Ma3[is.na(Ma3)] <- 0
+
+ProductionMa1[is.na(ProductionMa1)] <- 0
+ProductionMa2[is.na(ProductionMa2)] <- 0
+ProductionMa3[is.na(ProductionMa3)] <- 0
+ProductionMa4[is.na(ProductionMa4)] <- 0
+ProductionMa5[is.na(ProductionMa5)] <- 0
+ProductionMa6[is.na(ProductionMa6)] <- 0
+ProductionMa7[is.na(ProductionMa7)] <- 0
+ProductionMa8[is.na(ProductionMa8)] <- 0
+ProductionMa9[is.na(ProductionMa9)] <- 0
+ProductionMa10[is.na(ProductionMa10)] <- 0
+ProductionMa11[is.na(ProductionMa11)] <- 0
+ProductionMa12[is.na(ProductionMa12)] <- 0
+ProductionMa13[is.na(ProductionMa13)] <- 0
+ProductionMa14[is.na(ProductionMa14)] <- 0
+ProductionMa15[is.na(ProductionMa15)] <- 0
+ProductionEN3a[is.na(ProductionEN3a)] <- 0
+ProductionEN3b[is.na(ProductionEN3b)] <- 0
+ProductionEN3c[is.na(ProductionEN3c)] <- 0
+ProductionEN4a[is.na(ProductionEN4a)] <- 0
+ProductionEN4b[is.na(ProductionEN4b)] <- 0
+ProductionEN4c[is.na(ProductionEN4c)] <- 0
+ProductionEN5a[is.na(ProductionEN5a)] <- 0
+ProductionEN5b[is.na(ProductionEN5b)] <- 0
+ProductionEN5c[is.na(ProductionEN5c)] <- 0
+ProductionEN6a[is.na(ProductionEN6a)] <- 0
+ProductionEN6b[is.na(ProductionEN6b)] <- 0
+ProductionEN6c[is.na(ProductionEN6c)] <- 0
+ProductionEN7a[is.na(ProductionEN7a)] <- 0
+ProductionEN7b[is.na(ProductionEN7b)] <- 0
+ProductionEN7c[is.na(ProductionEN7c)] <- 0
+
+PracticeMa1[is.na(PracticeMa1)] <- 0
+PracticeMa2[is.na(PracticeMa2)] <- 0
+PracticeMa3[is.na(PracticeMa3)] <- 0
+PracticeEN1[is.na(PracticeEN1)] <- 0
+PracticeEN2[is.na(PracticeEN2)] <- 0
+PracticeEN3[is.na(PracticeEN3)] <- 0
+```
+
+データの整理(progress)
+```{r}
+data2 <- data[c(-3,-97,-98,-99,-100,-101,-104,-107,-108,-110,-112,-114,-115,-116),]
+data <-  data[c(-3,-97,-98,-99,-100,-101,-104,-107,-108,-110,-112,-114,-115,-116),]
+```
+
+
+```{r}
+data2
+```
+
+
+
+型変換
+```{r}
+data2$Q88.1_1 = as.numeric(data2$Q88.1_1)
+data2$Q88.1_2 = as.numeric(data2$Q88.1_2)
+data2$Q88.1_3 = as.numeric(data2$Q88.1_3)
+data2$Q88.1_4 = as.numeric(data2$Q88.1_4)
+data2$Q88.1_5 = as.numeric(data2$Q88.1_5)
+data2$Q88.1_6 = as.numeric(data2$Q88.1_6)
+data2$Q88.1_7 = as.numeric(data2$Q88.1_7)
+data2$Q88.1_8 = as.numeric(data2$Q88.1_8)
+```
+
+NAの処理
+```{r}
+
+data2$Q88.1_1[is.na(data2$Q88.1_1)] <- 0
+data2$Q88.1_2[is.na(data2$Q88.1_2)] <- 0
+data2$Q88.1_3[is.na(data2$Q88.1_3)] <- 0
+data2$Q88.1_4[is.na(data2$Q88.1_4)] <- 0
+data2$Q88.1_5[is.na(data2$Q88.1_5)] <- 0
+data2$Q88.1_6[is.na(data2$Q88.1_6)] <- 0
+data2$Q88.1_7[is.na(data2$Q88.1_7)] <- 0
+data2$Q88.1_8[is.na(data2$Q88.1_8)] <- 0
+```
+
+データとして使えない人の削除
+
+```{r}
+a<-data2$Q88.1_1
+b<-data2$Q88.1_2
+c<-data2$Q88.1_3
+d<-data2$Q88.1_4
+e<-data2$Q88.1_5
+f<-data2$Q88.1_6
+g<-data2$Q88.1_7
+h<-data2$Q88.1_8
+```
+
+```{r}
+j=1
+for(i in 1:103){
+  if(a[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+```{r}
+
+j=1
+for(i in 1:103){
+  if(b[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+```{r}
+j=1
+for(i in 1:103){
+  if(c[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+
+```{r}
+j=1
+for(i in 1:103){
+  if(d[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+
+```{r}
+j=1
+for(i in 1:103){
+  if(e[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+```{r}
+j=1
+for(i in 1:103){
+  if(f[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+```{r}
+j=1
+for(i in 1:103){
+  if(g[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+```{r}
+j=1
+for(i in 1:103){
+  if(h[i]==1){
+    print(j)
+  }
+  j<-j+1
+}
+```
+
+
+IMCの結果読んでない人
+5,15,20,35,67,97,102
+
+データの削除
+```{r}
+data2 <- data2[c(-5,-15,-20,-35,-67,-97,-102),]
+```
+
+
+書き出し
+```{r}
+write.csv(data2,file="raw_data.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
