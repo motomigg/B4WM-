@@ -1,0 +1,365 @@
+---
+title: "OSPAN and Conditional"
+author: "NAKAMURA Hiroko"
+date: "11/26/2021"
+output:
+  rmdformats::robobook:
+      code_folding: hide
+---
+
+```{r setup, include=FALSE}
+
+#分析に使うPackageの読み込み
+library(qualtRics) #Qualtricsデータの読み込み
+library(rmdformats) #R markdownのテンプレート
+library(tidyverse) #データ整形(dplyr)・グラフ作成(ggplot2)機能などがまとまったパッケージ
+library(afex) #分散分析や回帰分析の機能がまとまったパッケージ
+library(emmeans) #分散分析の下位検定
+library(knitr) #図表や分析結果をレポート用に整形する機能がまとまったパッケージ
+library(xtable) #表作成用のパッケージ
+library(rstatix)
+library(gridExtra)
+#計算結果の小数点以下の表示桁数を2にする
+options(digits=2)
+
+```
+
+# Data setup
+## Raw data
+```{r data setup,include = FALSE}
+#ローデータの読み込み
+raw <- qualtRics::read_survey("OSPAN_num_1203.csv")
+
+#列名の変更
+##新しい列名データの読み込み
+colname <- read.csv("OSPAN_ColName.csv") #Column name data
+Colnames <- dput(names(colname)) #Get column name
+
+##列名を変更したデータセット (raw2)の作成 
+raw2 <- raw %>% setNames(Colnames) #Change column name
+remove(colname) #Remove column name data
+remove(Colnames)
+```
+ローデータ  
+- 性別: 女性 = `r (nrow(raw2 [raw2$Q3.2_Gender == "2",]))`, 
+男性 = `r (nrow(raw2 [raw2$Q3.2_Gender == "1",]))`  
+- 年齢: 平均 = `r (mean(raw2$Q3.3_1_Age,na.rm=TRUE))`,
+SD = `r (sd(raw2$Q3.3_1_Age,na.rm=TRUE))`       
+- 所要時間 : 平均 = `r (mean(raw2$Duration..in.seconds.,na.rm=TRUE))`  ,
+SD = `r (sd(raw2$Duration..in.seconds.,na.rm=TRUE))`  
+max = `r (max(raw2$Duration..in.seconds.,na.rm=TRUE))` , min = `r (min(raw2$Duration..in.seconds.,na.rm=TRUE))`  
+
+## 除外データ  
+```{r discard}
+#除外する基準を基に，データを除外する
+#Progressによるデータ削除
+raw2 <- raw2[!(raw2$Progress!="100"),]
+##同意をしていない
+raw2 <- raw2[!(raw2$Q1.2_Agreement=="0"),]
+##母語が日本語ではない
+raw2 <- raw2[!(raw2$Q3.4_FirstLanguage=="0"),]
+#インターネットでしっかりできるか ?
+raw2 <- raw2[!(raw2$Q5.1_Oath=="0"),]
+
+#その他の除外基準(IMCなど)を基に，データを除外していく
+
+#IMCはWM.RmWM.RmdよりIMCの結果読んでない人
+#5,15,20,35,67,97,102
+raw2 <- raw2[c(-3,-13,-18,-33,-65,-95,-100),]
+
+```
+
+```{r, include = FALSE}
+#分析で用いない列を削除したデータセットraw3の作成
+raw3 <- raw2[,-(28:3359)] #OSPAN課題部分
+raw3 <- dplyr::select(raw3, -contains("Click")) #Timing機能でのClickした時間
+raw3 <- dplyr::select(raw3, -contains("Submit")) #Timing機能でのページ滞在時間
+```
+
+
+# スコアリング  
+## OSPAN Scoring
+```{r OSPAN score, include=FALSE}
+#OSPANをスコアリングしたデータセットraw4の作成
+raw4 <- raw3
+
+#部分加点法（partial scoring method）: 正しく再生できた分得点が加算  
+raw4$OSPAN_PartialScore<-rowSums(raw4[,c("SC42_OSPAN_Partial_Score_01","SC43_OSPAN_Partial_Score_02","SC44_OSPAN_Partial_Score_03")])
+
+#部分加点法での得点（OSPAN_PartialScore）を計算
+
+#完全加点法（absolute scoring method）: すべて再生できた場合にのみ加点される方法
+## 各スパンの完全加点法での得点を求める
+### 3スパンの完全加点法での得点
+raw4$SC13_OSPAN_3span_01[raw4$SC13_OSPAN_3span_01 < 3] <- 0 #3問正解以外は0点に変換
+raw4$SC15_OSPAN_3span_02[raw4$SC15_OSPAN_3span_02 < 3] <- 0 #3問正解以外は0点に変換
+raw4$SC17_OSPAN_3span_03[raw4$SC17_OSPAN_3span_03 < 3] <- 0 #3問正解以外は0点に変換
+raw4$OSPAN_3_AbsoluteScore <- rowSums(raw4[,c("SC13_OSPAN_3span_01","SC15_OSPAN_3span_02","SC17_OSPAN_3span_03")]) # 3スパンの完全加点法での得点(OSPAN_3_AbsoluteScore)を計算
+
+### 4スパンの完全加点法での得点
+raw4$SC19_OSPAN_4span_01[raw4$SC19_OSPAN_4span_01 < 4] <- 0 #4問正解以外は0点に変換
+raw4$SC21_OSPAN_4span_02[raw4$SC21_OSPAN_4span_02 < 4] <- 0 #4問正解以外は0点に変換
+raw4$SC23_OSPAN_4span_03[raw4$SC23_OSPAN_4span_03 < 4] <- 0 #4問正解以外は0点に変換
+raw4$OSPAN_4_AbsoluteScore <- rowSums(raw4[,c("SC19_OSPAN_4span_01","SC21_OSPAN_4span_02","SC23_OSPAN_4span_03")]) 
+# 4スパンの完全加点法での得点(OSPAN_4_AbsoluteScore)を計算
+
+### 5スパンの完全加点法での得点
+raw4$SC25_OSPAN_5span_01[raw4$SC25_OSPAN_5span_01 < 5] <- 0 #5問正解以外は0点に変換
+raw4$SC28_OSPAN_5span_02[raw4$SC28_OSPAN_5span_02 < 5] <- 0 #5問正解以外は0点に変換
+raw4$SC30_OSPAN_5span_03[raw4$SC30_OSPAN_5span_03 < 5] <- 0 #5問正解以外は0点に変換
+raw4$OSPAN_5_AbsoluteScore <- rowSums(raw4[,c("SC25_OSPAN_5span_01","SC28_OSPAN_5span_02","SC30_OSPAN_5span_03")])
+
+
+### 6スパンの完全加点法での得点
+raw4$SC32_OSPAN_6span_01[raw4$SC32_OSPAN_6span_01 < 6] <- 0 #6問正解以外は0点に変換
+raw4$SC34_OSPAN_6span_02[raw4$SC34_OSPAN_6span_02 < 6] <- 0 #6問正解以外は0点に変換
+raw4$SC35_OSPAN_6span_03[raw4$SC35_OSPAN_6span_03 < 6] <- 0 #6問正解以外は0点に変換
+raw4$OSPAN_6_AbsoluteScore <- rowSums(raw4[,c("SC32_OSPAN_6span_01","SC34_OSPAN_6span_02","SC35_OSPAN_6span_03")])
+
+### 7スパンの完全加点法での得点
+raw4$SC37_OSPAN_7span_01[raw4$SC37_OSPAN_7span_01 < 7] <- 0 #7問正解以外は0点に変換
+raw4$SC39_OSPAN_7span_02[raw4$SC39_OSPAN_7span_02 < 7] <- 0 #7問正解以外は0点に変換
+raw4$SC41_OSPAN_7span_03[raw4$SC41_OSPAN_7span_03 < 7] <- 0 #7問正解以外は0点に変換
+raw4$OSPAN_7_AbsoluteScore <- rowSums(raw4[,c("SC37_OSPAN_7span_01","SC39_OSPAN_7span_02","SC41_OSPAN_7span_03")])
+
+###3~7スパンの完全加点法での得点を合計し，完全加点法でのスコアを求める
+raw4$OSPAN_AbsoluteScore <- rowSums(raw4[,c("OSPAN_3_AbsoluteScore","OSPAN_4_AbsoluteScore","OSPAN_5_AbsoluteScore","OSPAN_6_AbsoluteScore","OSPAN_7_AbsoluteScore")])
+#3スパン (OSPAN_3_AbsoluteScore)から7スパン(OSPAN_7_AbsoluteScore)の完全加点法の得点を合計し，完全加点法のスコア (OSPAN_AbsoluteScore)を計算
+
+raw4$OSPAN_AbsoluteScore <- round(raw4$OSPAN_AbsoluteScore*1.333 ,digits=1 )
+raw4$OSPAN_PartialScore <-round(raw4$OSPAN_PartialScore*1.333 ,digits=1 )
+
+```
+OSPAN成績  
+-部分加点法（partial scoring method）: 平均 = `r (mean(raw4$OSPAN_PartialScore,na.rm=TRUE))`,
+SD = `r (sd(raw4$OSPAN_PartialScore,na.rm=TRUE))`       
+-完全加点法（absolute scoring method）: 平均 = `r (mean(raw4$OSPAN_AbsoluteScore,na.rm=TRUE))`,
+SD = `r (sd(raw4$OSPAN_AbsoluteScore,na.rm=TRUE))`      
+
+
+部分加点法
+mean =86
+sd = 13
+```{r}
+mean(raw4$OSPAN_PartialScore,na.rm=TRUE)
+sd(raw4$OSPAN_PartialScore,na.rm=TRUE)
+hist(raw4$OSPAN_PartialScore, breaks = seq(0,100,10) ,ylim=c(0,50),xlab="Span Scores(%)")
+```
+
+完全加点法
+mean=67
+sd =25
+```{r}
+mean(raw4$OSPAN_AbsoluteScore,na.rm=TRUE)
+sd(raw4$OSPAN_AbsoluteScore,na.rm=TRUE)
+hist(raw4$OSPAN_AbsoluteScore,breaks = seq(0,100,10),ylim=c(0,50),xlab="Span Scores(%)")
+```
+
+年齢
+mean =39
+piasonn =-0.048
+あまり関係なさそう？
+```{r}
+mean(raw4$Q3.3_1_Age)
+plot(raw4$Q3.3_1_Age, raw4$OSPAN_PartialScore)
+cor(raw4$OSPAN_PartialScore,raw4$Q3.3_1_Age)
+#cor(raw4$OSPAN_PartialScore,raw4$Q3.3_1_Age,method="s")
+```
+
+時間
+mean =2727
+piason = 0.054
+長時間過ぎる人は消してもいいかも
+```{r}
+mean(raw4$Duration..in.seconds.)
+plot(raw4$Duration..in.seconds., raw4$OSPAN_PartialScore)
+cor(raw4$OSPAN_PartialScore,raw4$Duration..in.seconds.)
+```
+
+
+
+## Truth Table Scoring
+```{r Truth Table Score, include=FALSE}
+#Truth Tableをスコアリングしたデータセットraw5の作成
+raw5 <- raw4
+
+#真理値の判断：TT, TF, FT, FF事例の真偽判断をカウント
+##TT事例
+raw5$TT_True <- rowSums(filter(select(raw5,contains("_TT_")))==1) #TT事例を真（1）と判断した数
+raw5$TT_False <- rowSums(filter(select(raw5,contains("_TT_")))==2) #TT事例を偽（2）と判断した数
+raw5$TT_Void <- rowSums(filter(select(raw5,contains("_TT_")))==3) #TT事例を空（3）と判断した数
+
+##TF事例
+raw5$TF_True <- rowSums(filter(select(raw5,contains("_TF_")))==1) #TF事例を真（1）と判断した数
+raw5$TF_False <- rowSums(filter(select(raw5,contains("_TF_")))==2) #TF事例を偽（2）と判断した数
+raw5$TF_Void <- rowSums(filter(select(raw5,contains("_TF_")))==3) #TF事例を空（3）と判断した数
+
+##FT事例
+
+raw5$FT_True <- rowSums(filter(select(raw5,contains("_FT_")))==1) #TF事例を真（1）と判断した数
+raw5$FT_False <- rowSums(filter(select(raw5,contains("_FT_")))==2) #TF事例を偽（2）と判断した数
+raw5$FT_Void <- rowSums(filter(select(raw5,contains("_FT_")))==3) #TF事例を空（3）と判断した数
+
+##FF事例
+raw5$FF_True <- rowSums(filter(select(raw5,contains("_FF_")))==1) #TF事例を真（1）と判断した数
+raw5$FF_False <- rowSums(filter(select(raw5,contains("_FF_")))==2) #TF事例を偽（2）と判断した数
+raw5$FF_Void <- rowSums(filter(select(raw5,contains("_FF_")))==3) #TF事例を空（3）と判断した数
+
+
+#マッチング事例の判断：PQ, PnotQ,notPQ,notPnotQ事例の真偽判断をカウント
+##PQ事例
+raw5$PQ_True <- rowSums(filter(select(raw5, contains("_PQ")))==1) #PQ事例を真（1）と判断した数
+raw5$PQ_False <- rowSums(filter(select(raw5, contains("_PQ")))==2) #PQ事例を偽（2）と判断した数
+raw5$PQ_Void <- rowSums(filter(select(raw5, contains("_PQ")))==3) #PQ事例を空（3）と判断した数
+
+##PnotQ
+raw5$PnotQ_True <- rowSums(filter(select(raw5, contains("_PnotQ")))==1) #PQ事例を真（1）と判断した数
+raw5$PnotQ_False <- rowSums(filter(select(raw5, contains("_PnotQ")))==2) #PQ事例を偽（2）と判断した数
+raw5$PnotQ_Void <- rowSums(filter(select(raw5, contains("_PnotQ")))==3) #PQ事例を空（3）と判断した数
+
+##notPQ
+raw5$notPQ_True <- rowSums(filter(select(raw5, contains("_notPQ")))==1) #PQ事例を真（1）と判断した数
+raw5$notPQ_False <- rowSums(filter(select(raw5, contains("_notPQ")))==2) #PQ事例を偽（2）と判断した数
+raw5$notPQ_Void <- rowSums(filter(select(raw5, contains("_notPQ")))==3) #PQ事例を空（3）と判断した数
+
+#notPnotQ事例
+raw5$notPnotQ_True <- rowSums(filter(select(raw5, contains("_notPnotQ")))==1) #PQ事例を真（1）と判断した数
+raw5$notPnotQ_False <- rowSums(filter(select(raw5, contains("_notPnotQ")))==2) #PQ事例を偽（2）と判断した数
+raw5$notPnotQ_Void <- rowSums(filter(select(raw5, contains("_notPnotQ")))==3) #PQ事例を空（3）と判断した数
+
+
+
+
+#論理的推論の指標を求める
+## Logical index (LI):  TTを真，TFを偽とした数
+raw5$LogicalIndex <- rowSums(raw5[,c("TT_True","TF_False")])
+
+## False Antecedent Index (FAI): FT，FFを空とした数
+raw5$FalseAntecedentIndex <- rowSums(raw5[,c("FT_Void","FF_Void")])
+
+#write.csv(raw5,file="raw_data.csv")
+#マッチングバイアスの指標を求める
+
+
+## Antecedent Matching Index (AMI) : 「notPQ, notPnotQを無関係」と判断した数と，「PQ, PnotQ」を無関係と判断した数の差
+raw5$AntecedentMatchingIndex <- rowSums(raw5[,c("notPnotQ_Void","notPQ_Void")]) - rowSums(raw5[,c("PQ_Void","PnotQ_Void")]) 
+
+## Consequent Matching Index (CMI):「PnotQ, notPnotQを無関係」と判断した数と，「PQ, notQ」を無関係と判断した数の差
+
+raw5$ConsequentMatchingIndex <- rowSums(raw5[,c("notPnotQ_Void","PnotQ_Void")]) - rowSums(raw5[,c("PQ_Void","notPQ_Void")]) 
+
+
+
+```
+
+
+データの様子見
+
+```{r}
+raw5$AntecedentMatchingIndex
+raw5$ConsequentMatchingIndex
+```
+
+AMIの平均 =4.2    sd = 4.3  min=-4   max=16
+CMIの平均 =2     sd = 2.6  min=-1   max=9
+FAIの平均 =11     sd = 4.6  min=0   max=16
+LIの平均 = 14    sd = 2.3  min=8   max=16
+
+```{r}
+#LI
+mean(raw5$LogicalIndex,na.rm=TRUE)
+sd(raw5$LogicalIndex,na.rm=TRUE)
+min(raw5$LogicalIndex,na.rm=TRUE)
+max(raw5$LogicalIndex,na.rm=TRUE)
+
+#FAI
+mean(raw5$FalseAntecedentIndex,na.rm=TRUE)
+sd(raw5$FalseAntecedentIndex,na.rm=TRUE)
+min(raw5$FalseAntecedentIndex,na.rm=TRUE)
+max(raw5$FalseAntecedentIndex,na.rm=TRUE)
+
+#AMI
+mean(raw5$AntecedentMatchingIndex,na.rm=TRUE)
+sd(raw5$AntecedentMatchingIndex,na.rm=TRUE)
+min(raw5$AntecedentMatchingIndex,na.rm=TRUE)
+max(raw5$AntecedentMatchingIndex,na.rm=TRUE)
+
+#CMI
+mean(raw5$ConsequentMatchingIndex,na.rm=TRUE)
+sd(raw5$ConsequentMatchingIndex,na.rm=TRUE)
+min(raw5$ConsequentMatchingIndex,na.rm=TRUE)
+max(raw5$ConsequentMatchingIndex,na.rm=TRUE)
+
+```
+
+
+
+## Probability Scoring
+```{r Probability Score, include=FALSE}
+#確率判断課題をスコアリングしたデータセットraw6の作成
+raw6 <- raw5
+
+#回答を条件付き確率=CD, 連言=Conj, 双条件=BC, 実質含意=MI, その他=Otherに分類
+# HH条件1問目の回答を分類し，分類結果を"Probability_HH_01"に示す
+raw6 <- mutate(raw6, Probability_HH_01 = recode(Q79.1_1_Prob_HH, '90'="CD", '45'="Conj",'60' = "BC", '95'="MI",.default="Other")) 
+
+raw6 <- mutate(raw6, Probability_HH_02 = recode(Q80.1_1_Prob_HH, '89'="CD", '40'="Conj",'55' = "BC", '95'="MI",.default="Other")) 
+
+#HL
+raw6 <- mutate(raw6, Probability_HL_01 = recode(Q81.1_1_Prob_HL, '50'="CD", '45'="Conj",'47' = "BC", '55'="MI",.default="Other"))
+
+raw6 <- mutate(raw6, Probability_HL_02 = recode(Q82.1_1_Prob_HL, '50'="CD", '40'="Conj",'44' = "BC", '60'="MI",.default="Other"))
+
+#LH
+raw6 <- mutate(raw6, Probability_LH_01 = recode(Q83.1_1_Prob_LH, '90'="CD", '5'="Conj",'9' = "BC", '99'="MI",'100'="MI",.default="Other"))
+
+raw6 <- mutate(raw6, Probability_LH_02 = recode(Q84.1_1_Prob_LH, '80'="CD", '4'="Conj",'8' = "BC", '99'="MI",.default="Other"))
+
+#LL
+raw6 <- mutate(raw6, Probability_LL_01 = recode(Q85.1_1_Prob_LL, '50'="CD", '5'="Conj",'8' = "BC", '96'="MI",.default="Other"))
+
+raw6 <- mutate(raw6, Probability_LL_02 = recode(Q86.1_1_Prob_LL, '50'="CD", '4'="Conj",'7' = "BC", '96'="MI",.default="Other"))
+
+#確率判断の回答数
+##Conditional probabilityで判断した数
+raw6$Probability_ConditionalProbability <- rowSums(filter(select(raw6, contains("Probability")))=="CD")
+##連言
+raw6$Probability_ConjunctionProbability <- rowSums(filter(select(raw6, contains("Probability")))=="Conj")
+
+##双条件
+raw6$Probability_BiconditionalProbability <- rowSums(filter(select(raw6, contains("Probability")))=="BC")
+
+##実質含意
+raw6$Probability_MaterialimplicationProbability <- rowSums(filter(select(raw6, contains("Probability")))=="MI")
+
+raw6$Probability_other<-rowSums(filter(select(raw6,contains("Probability")))=="Other")
+
+
+#write.csv(raw6,file="raw_data.csv")
+
+
+```
+
+```{r}
+raw6$Probability_other
+```
+
+相関関係
+WMと確率判断関係なさそう.....
+```{r}
+#cor(raw5$AntecedentMatchingIndex,raw5$ConsequentMatchingIndex)
+#cor(raw5$AntecedentMatchingIndex,raw5$FalseAntecedentIndex)
+#cor(raw5$AntecedentMatchingIndex,raw5$LogicalIndex)
+cor(raw5$AntecedentMatchingIndex,raw4$OSPAN_PartialScore)
+cor(raw5$AntecedentMatchingIndex,raw4$OSPAN_AbsoluteScore)
+cor(raw6$Probability_other,raw4$OSPAN_AbsoluteScore)
+#cor(raw4$OSPAN_PartialScore,raw6$Probability_ConditionalProbability)
+#cor(raw4$OSPAN_PartialScore , raw6$Probability_ConjunctionProbability)
+```
+
+
+
+
+
+
+
