@@ -1,0 +1,184 @@
+---
+title: "関係性"
+author: "渡邊元樹"
+date: "2021/12/20"
+output: html_document
+---
+
+## 確率判断の回答と真理値表課題の相関
+```{r probability and truth table}
+#Conditional probability
+##Conditional probabilityとLIとの相関
+plot(d6$LI, d6$Probability_ConditionalProbability,xlab="LI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_LI <- cor.test(d6$LI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_LI
+```
+
+
+##Conditional probabilityとFAIとの相関
+```{r probability and truth table}
+plot(d6$FAI, d6$Probability_ConditionalProbability,xlab="FAI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_FAI <- cor.test(d6$FAI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_FAI
+```
+
+##Conditional probabilityとAMIとの相関
+```{r probability and truth table}
+plot(d6$AMI, d6$Probability_ConditionalProbability,xlab="AMI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_AMI <- cor.test(d6$AMI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_AMI
+```
+##Conditional probabilityとCMIとの相関
+```{r probability and truth table}
+plot(d6$CMI, d6$Probability_ConditionalProbability,xlab="CMI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_CMI <- cor.test(d6$CMI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_CMI
+
+```
+
+### Conjunctive probabilityについても，真理値表課題の指標との相関を見る
+```{r probability and truth table}
+
+##ConjunctiveprobabilityとLIとの相関
+plot(d6$LI, d6$Probability_ConjunctiveProbability,xlab="LI",ylab="ConjunctiveProbability")#散布図
+cor_ConjunctiveProbability_LI <- cor.test(d6$LI,d6$Probability_ConjunctionProbability) #相関係数
+cor_ConjunctiveProbability_LI
+
+```
+
+
+##Conjunctive probabilityとFAIとの相関
+
+```{r probability and truth table}
+plot(d6$FAI, d6$Probability_Conjunctiveprobability,xlab="FAI", ylab="Conjunctiveprobability")#散布図
+cor_Conjunctiveprobability_FAI <- cor.test(d6$FAI,d6$Probability_ConjunctionProbability) #相関係数
+cor_Conjunctiveprobability_FAI
+```
+
+##Conjunctive probabilityとAMIとの相関
+
+```{r probability and truth table}
+plot(d6$AMI, d6$Probability_Conjunctiveprobability,xlab="AMI", ylab="Conjunctiveprobability")#散布図
+cor_Conjunctiveprobability_AMI <- cor.test(d6$AMI,d6$Probability_ConjunctionProbability) #相関係数
+cor_Conjunctiveprobability_AMI
+```
+
+##Conjunctive probabilityとCMIとの相関
+```{r probability and truth table}
+plot(d6$CMI, d6$Probability_Conjunctiveprobability,xlab="CMI", ylab="Conjunctiveprobability")#散布図
+cor_Conjunctiveprobability_CMI <- cor.test(d6$CMI,d6$Probability_ConjunctionProbability) #相関係数
+cor_Conjunctiveprobability_CMI
+
+```
+
+
+相関
+```{r}
+cor_LI_FAI <- cor.test(d5$LI,d5$FAI) 
+cor_LI_FAI
+```
+
+```{r}
+cor_LI_AMI <- cor.test(d5$LI,d5$AMI) 
+cor_LI_AMI
+```
+
+```{r}
+cor_LI_CMI <- cor.test(d5$LI,d5$CMI) 
+cor_LI_CMI
+```
+双条件
+```{r}
+cor_LI_BC <- cor.test(d6$Probability_BiconditionalProbability,d5$LI) 
+cor_LI_BC
+```
+
+実質含意
+```{r}
+cor_LI_MI <- cor.test(d6$Probability_MaterialimplicationProbability,d5$LI) 
+cor_LI_MI
+```
+
+```{r}
+cor_FAI_AMI <- cor.test(d5$FAI,d5$AMI) 
+cor_FAI_AMI
+```
+
+```{r}
+cor_FAI_CMI <- cor.test(d5$FAI,d5$CMI) 
+cor_FAI_CMI
+```
+
+```{r}
+cor_FAI_BC <- cor.test(d6$Probability_BiconditionalProbability,d5$FAI) 
+cor_FAI_BC
+```
+
+```{r}
+cor_FAI_MI <- cor.test(d6$Probability_MaterialimplicationProbability,d5$FAI) 
+cor_FAI_MI
+```
+
+
+```{r}
+cor_AMI_CMI <- cor.test(d5$AMI,d5$CMI) 
+cor_AMI_CMI
+```
+
+```{r}
+cor_AMI_BC <- cor.test(d6$Probability_BiconditionalProbability,d5$AMI) 
+cor_AMI_BC
+```
+
+```{r}
+cor_AMI_MI <- cor.test(d6$Probability_MaterialimplicationProbability,d5$AMI) 
+cor_AMI_MI
+```
+
+```{r}
+cor_CMI_BC <- cor.test(d6$Probability_BiconditionalProbability,d5$CMI) 
+cor_CMI_BC
+```
+
+```{r}
+cor_CMI_MI <- cor.test(d6$Probability_MaterialimplicationProbability,d5$CMI) 
+cor_CMI_MI
+```
+
+
+```{r}
+cor_CD_BC <- cor.test(d6$Probability_BiconditionalProbability,d6$Probability_ConditionalProbability) 
+cor_CD_BC
+```
+
+```{r}
+cor_CD_MI <- cor.test(d6$Probability_MaterialimplicationProbability,d6$Probability_ConditionalProbability) 
+cor_CD_MI
+```
+
+
+
+```{r}
+cor_CD_CJ <- cor.test(d6$Probability_ConjunctionProbability,d6$Probability_ConditionalProbability) 
+cor_CD_CJ
+
+```
+
+```{r}
+cor_CJ_BC <- cor.test(d6$Probability_BiconditionalProbability,d6$Probability_ConjunctionProbability) 
+cor_CJ_BC
+```
+
+```{r}
+cor_CJ_MI <- cor.test(d6$Probability_MaterialimplicationProbability,d6$Probability_ConjunctionProbability) 
+cor_CJ_MI
+```
+
+
+```{r}
+cor_MI_BC <- cor.test(d6$Probability_BiconditionalProbability,d6$Probability_MaterialimplicationProbability) 
+cor_MI_BC
+```
+
+
+
