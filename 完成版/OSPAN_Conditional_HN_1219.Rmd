@@ -1,0 +1,722 @@
+---
+title: "OSPAN and Conditional"
+author: "渡邊元樹"
+date: "11/26/2021"
+output:
+  rmdformats::robobook:
+      code_folding: hide
+---
+
+```{r setup, include=FALSE}
+#分析に使うPackageの読み込み
+library(qualtRics) #Qualtricsデータの読み込み
+library(rmdformats) #R markdownのテンプレート
+library(tidyverse) #データ整形(dplyr)・グラフ作成(ggplot2)機能などがまとまったパッケージ
+library(afex) #分散分析や回帰分析の機能がまとまったパッケージ
+library(emmeans) #分散分析の下位検定
+library(knitr) #図表や分析結果をレポート用に整形する機能がまとまったパッケージ
+library(xtable) #表作成用のパッケージ
+library(rstatix)
+library(gridExtra)
+library(ggplot2) #グラフ作成用ライブラリ
+library(skimr) #データ要約用のパッケージ
+
+
+#計算結果の小数点以下の表示桁数を2にする
+options(digits=2)
+```
+
+# Data setup
+## d data
+```{r data setup,include = FALSE}
+#ローデータの読み込み
+raw <- qualtRics::read_survey("OSPAN_num_1203.csv")
+
+#列名の変更
+##新しい列名データの読み込み
+colname <- read.csv("OSPAN_ColName.csv") #Column name data
+Colnames <- dput(names(colname)) #Get column name
+
+##列名を変更したデータセット (d2)の作成 
+d2 <- raw %>% setNames(Colnames) #Change column name
+remove(colname) #Remove column name data
+remove(Colnames)
+```
+ローデータ  
+- 性別: 女性 = `r (nrow(d2 [d2$Q3.2_Gender == "2",]))`, 
+男性 = `r (nrow(d2 [d2$Q3.2_Gender == "1",]))`  
+- 年齢: 平均 = `r (mean(d2$Q3.3_1_Age,na.rm=TRUE))`,
+SD = `r (sd(d2$Q3.3_1_Age,na.rm=TRUE))`       
+- 所要時間 : 平均 = `r (mean(d2$Duration..in.seconds.,na.rm=TRUE))`  ,
+SD = `r (sd(d2$Duration..in.seconds.,na.rm=TRUE))`  
+max = `r (max(d2$Duration..in.seconds.,na.rm=TRUE))` , min = `r (min(d2$Duration..in.seconds.,na.rm=TRUE))`  
+
+## 除外データ  
+```{r discard}
+#除外する基準を基に，データを除外する
+#Progressによるデータ削除
+d2 <- d2[!(d2$Progress!="100"),]
+##同意をしていない
+d2 <- d2[!(d2$Q1.2_Agreement=="0"),]
+##母語が日本語ではない
+d2 <- d2[!(d2$Q3.4_FirstLanguage=="0"),]
+#インターネットでしっかりできるか ?
+d2 <- d2[!(d2$Q5.1_Oath=="0"),]
+
+#その他の除外基準(IMCなど)を基に，データを除外していく
+
+#IMCはWM.RmWM.RmdよりIMCの結果読んでない人
+#5,15,20,35,67,97,102
+d2 <- d2[c(-3,-13,-18,-33,-65,-95,-100),]
+
+```
+
+
+
+
+```{r, include = FALSE}
+#分析で用いない列を削除したデータセットd3の作成
+d3 <- d2[,-(28:3359)] #OSPAN課題部分
+d3 <- dplyr::select(d3, -contains("Click")) #Timing機能でのClickした時間
+d3 <- dplyr::select(d3, -contains("Submit")) #Timing機能でのページ滞在時間
+```
+
+
+時間による削除上位3％下位3%
+3人ずつ削除
+
+```{r}
+#mean(d3$Duration..in.seconds.)
+#sd(d3$Duration..in.seconds.)
+#plot(d3$Duration..in.seconds.)
+#d3$Duration..in.seconds.
+sort(d3$Duration..in.seconds.)
+#11790, 9041, 6758
+#88,87,85
+#1579,1582,1617
+#6,38,93
+d3<- d3[c(-88,-87,-85,-6,-38,-93),]
+```
+
+
+
+-- 分析から除外した人数  
+27人削除
+progressによる削除13人
+インターネットでしっかりできるか？1人
+IMCによる削除7人
+時間による削除人
+S
+-- 分析に用いる人数 
+88人
+--- 分析に用いる参加者の平均年齢，性別  
+平均年齢=39
+性別
+男 46
+女 42
+```{r}
+mean(d3$Q3.3_1_Age)
+sd(d3$Q3.3_1_Age)
+table(d3$Q3.2_Gender)
+```
+
+
+
+
+# Operation Span Task  
+- OSPAN Scoring  
+```{r OSPAN score, include=FALSE}
+#OSPANをスコアリングしたデータセットd4の作成
+d4 <- d3
+
+#部分加点法（partial scoring method）: 正しく再生できた分得点が加算  
+d4$OSPAN_PartialScore<-rowSums(d4[,c("SC42_OSPAN_Partial_Score_01","SC43_OSPAN_Partial_Score_02","SC44_OSPAN_Partial_Score_03")])
+
+#部分加点法での得点（OSPAN_PartialScore）を計算
+
+#完全加点法（absolute scoring method）: すべて再生できた場合にのみ加点される方法
+## 各スパンの完全加点法での得点を求める
+### 3スパンの完全加点法での得点
+d4$SC13_OSPAN_3span_01[d4$SC13_OSPAN_3span_01 < 3] <- 0 #3問正解以外は0点に変換
+d4$SC15_OSPAN_3span_02[d4$SC15_OSPAN_3span_02 < 3] <- 0 #3問正解以外は0点に変換
+d4$SC17_OSPAN_3span_03[d4$SC17_OSPAN_3span_03 < 3] <- 0 #3問正解以外は0点に変換
+d4$OSPAN_3_AbsoluteScore <- rowSums(d4[,c("SC13_OSPAN_3span_01","SC15_OSPAN_3span_02","SC17_OSPAN_3span_03")]) # 3スパンの完全加点法での得点(OSPAN_3_AbsoluteScore)を計算
+
+### 4スパンの完全加点法での得点
+d4$SC19_OSPAN_4span_01[d4$SC19_OSPAN_4span_01 < 4] <- 0 #4問正解以外は0点に変換
+d4$SC21_OSPAN_4span_02[d4$SC21_OSPAN_4span_02 < 4] <- 0 #4問正解以外は0点に変換
+d4$SC23_OSPAN_4span_03[d4$SC23_OSPAN_4span_03 < 4] <- 0 #4問正解以外は0点に変換
+d4$OSPAN_4_AbsoluteScore <- rowSums(d4[,c("SC19_OSPAN_4span_01","SC21_OSPAN_4span_02","SC23_OSPAN_4span_03")]) 
+# 4スパンの完全加点法での得点(OSPAN_4_AbsoluteScore)を計算
+
+### 5スパンの完全加点法での得点
+d4$SC25_OSPAN_5span_01[d4$SC25_OSPAN_5span_01 < 5] <- 0 #5問正解以外は0点に変換
+d4$SC28_OSPAN_5span_02[d4$SC28_OSPAN_5span_02 < 5] <- 0 #5問正解以外は0点に変換
+d4$SC30_OSPAN_5span_03[d4$SC30_OSPAN_5span_03 < 5] <- 0 #5問正解以外は0点に変換
+d4$OSPAN_5_AbsoluteScore <- rowSums(d4[,c("SC25_OSPAN_5span_01","SC28_OSPAN_5span_02","SC30_OSPAN_5span_03")])
+
+
+### 6スパンの完全加点法での得点
+d4$SC32_OSPAN_6span_01[d4$SC32_OSPAN_6span_01 < 6] <- 0 #6問正解以外は0点に変換
+d4$SC34_OSPAN_6span_02[d4$SC34_OSPAN_6span_02 < 6] <- 0 #6問正解以外は0点に変換
+d4$SC35_OSPAN_6span_03[d4$SC35_OSPAN_6span_03 < 6] <- 0 #6問正解以外は0点に変換
+d4$OSPAN_6_AbsoluteScore <- rowSums(d4[,c("SC32_OSPAN_6span_01","SC34_OSPAN_6span_02","SC35_OSPAN_6span_03")])
+
+### 7スパンの完全加点法での得点
+d4$SC37_OSPAN_7span_01[d4$SC37_OSPAN_7span_01 < 7] <- 0 #7問正解以外は0点に変換
+d4$SC39_OSPAN_7span_02[d4$SC39_OSPAN_7span_02 < 7] <- 0 #7問正解以外は0点に変換
+d4$SC41_OSPAN_7span_03[d4$SC41_OSPAN_7span_03 < 7] <- 0 #7問正解以外は0点に変換
+d4$OSPAN_7_AbsoluteScore <- rowSums(d4[,c("SC37_OSPAN_7span_01","SC39_OSPAN_7span_02","SC41_OSPAN_7span_03")])
+
+###3~7スパンの完全加点法での得点を合計し，完全加点法でのスコアを求める
+d4$OSPAN_AbsoluteScore <- rowSums(d4[,c("OSPAN_3_AbsoluteScore","OSPAN_4_AbsoluteScore","OSPAN_5_AbsoluteScore","OSPAN_6_AbsoluteScore","OSPAN_7_AbsoluteScore")])
+#3スパン (OSPAN_3_AbsoluteScore)から7スパン(OSPAN_7_AbsoluteScore)の完全加点法の得点を合計し，完全加点法のスコア (OSPAN_AbsoluteScore)を計算
+
+
+# d4$OSPAN_AbsoluteScore <- round(d4$OSPAN_AbsoluteScore*1.333 ,digits=1 )
+# d4$OSPAN_PartialScore <-round(d4$OSPAN_PartialScore*1.333 ,digits=1 )
+## スコアを1.3倍しなくても良いかも
+```
+
+## OSPAN成績(満点:75点)  
+### 部分加点法  
+平均＝64
+sd=10
+```{r}
+mean(d4$OSPAN_PartialScore,na.rm=TRUE)
+sd(d4$OSPAN_PartialScore,na.rm=TRUE)
+hist(d4$OSPAN_PartialScore, breaks = seq(0,80,5) ,ylim=c(0,50),main = "部分加点法の分布",xlab="Span Scores")
+```
+-部分加点法（partial scoring method）: 平均 = `r (mean(d4$OSPAN_PartialScore,na.rm=TRUE))`,
+SD = `r (sd(d4$OSPAN_PartialScore,na.rm=TRUE))`   
+
+## 完全加点法  
+平均=49
+sd = 18
+```{r}
+mean(d4$OSPAN_AbsoluteScore,na.rm=TRUE)
+sd(d4$OSPAN_AbsoluteScore,na.rm=TRUE)
+hist(d4$OSPAN_AbsoluteScore,breaks = seq(0,80,5),ylim=c(0,50),main="完全加点法の分布",xlab="Span Scores")
+```
+-完全加点法（absolute scoring method）: 平均 = `r (mean(d4$OSPAN_AbsoluteScore,na.rm=TRUE))`,
+SD = `r (sd(d4$OSPAN_AbsoluteScore,na.rm=TRUE))`     
+`r (plot(d4$OSPAN_AbsoluteScore, d4$OSPAN_PartialScore,xlab="OSPAN Absolute Score", ylab="OSPAN Partical Score"))`
+
+## OSPANと年齢との相関  
+```{r}
+#年齢の平均とSD
+mean(d4$Q3.3_1_Age)
+sd(d4$Q3.3_1_Age)
+
+#年齢と部分加点法スコアとの相関
+plot(d4$Q3.3_1_Age, d4$OSPAN_PartialScore,xlab="Age", ylab="OSPAN Partical Score") #散布図
+cor_Age_Partial <- cor.test(d4$OSPAN_PartialScore,d4$Q3.3_1_Age) #相関係数
+## 相関を求める場合は，cor.test関数を使うと，p値が出力され統計的に有意かどうかが分かりやすいです
+cor_Age_Partial
+
+#年齢と完全加点法スコアとの相関
+plot(d4$Q3.3_1_Age, d4$OSPAN_PartialScore,xlab="Age", ylab="OSPAN Absolute Score") #散布図
+cor_Age_Absolute <- cor.test(d4$OSPAN_AbsoluteScore,d4$Q3.3_1_Age) #相関係数
+cor_Age_Absolute
+```
+平均年齢 = `r (mean(d4$Q3.3_1_Age))`, SD = `r (sd(d4$Q3.3_1_Age))`　　
+-年齢とOSPANの相関  
+-- 部分加点法 r = `r (cor_Age_Partial$estimate)`, p = `r (cor_Age_Partial$p.value)`  
+-- 完全加点法　r = `r (cor_Age_Absolute$estimate)`, p = `r (cor_Age_Absolute$p.value)`  
+年齢とOSPANの相関は統計的に非有意　　
+
+
+## 課題の所要時間  
+- mean =2727   
+- r = 0.054  
+-- 長時間過ぎる人は消してもいいかも 
+
+```{r}
+# 所要時間の平均・散布図，OPANとの相関
+mean(d4$Duration..in.seconds.)
+plot(d4$Duration..in.seconds., d4$OSPAN_PartialScore)
+cor.test(d4$OSPAN_PartialScore,d4$Duration..in.seconds.)
+```
+
+
+
+# 真理値表課題
+```{r Truth Table Data,include=TRUE}
+##今後の分析に必要な列（参加者のID, OSPANのabsoluteとpartial score, 真理値表，確率判断課題）を選択
+d5 <- d4[,-(1:8)]
+d5 <- d5[,-(2:19)]
+d5 <- d5[,-(43:105)]
+d5 <- d5[,-(44:48)]
+
+# 各判断の頻度と％を表にまとめる (Evans et al., 2007のTable 4a)
+TrTable <- d5[,-(34:44)]
+TrTable <- TrTable %>% 
+  pivot_longer(cols = -c(ResponseId),names_to = c("Question01","Question02","Case","Matching"),names_sep = "_")
+TrTable<-xtabs(~Case+Matching+value,TrTable) #データを表形式にする
+
+ftable(TrTable) #各判断の頻度
+ftable(addmargins(prop.table(TrTable, c(1, 2)), 3)) #各判断の%
+```
+
+
+## Truth Table Score
+```{r Truth Table Score}
+#Truth Tableをスコアリングしたデータセットd5の作成
+
+#Evans (2007) の指標
+##LogicalIndex (TTを真・TFを偽と判断した数)
+d5 <- mutate(d5,
+       LI = if_else(
+         d5$Q70.1_1_TT_PQ == 1 & d5$Q70.1_2_TF_PnotQ == 2,
+          1, 0
+       ),
+       LI = if_else(
+         d5$Q71.1_1_TT_PnotQ == 1 & d5$Q71.1_2_TF_PQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q72.1_1_TT_notPQ == 1 & d5$Q72.1_2_TF_notPnotQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q73.1_1_TT_notPnotQ == 1 & d5$Q73.1_2_TF_notPQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q74.1_1_TT_PQ == 1 & d5$Q74.1_2_TF_PnotQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q75.1_1_TT_PnotQ == 1 & d5$Q75.1_2_TF_PQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q76.1_1_TT_notPQ == 1 & d5$Q76.1_2_TF_notPnotQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q77.1_1_TT_notPnotQ == 1 & d5$Q77.1_2_TF_notPQ == 2,
+         LI + 1, LI + 0
+       ))
+
+##False Antecedent Index (FAI): FT・FFを空とした数
+d5 <- mutate(d5,
+       FAI = if_else(
+         d5$Q70.1_3_FT_notPQ == 3 & d5$Q70.1_4_FF_notPnotQ == 3,
+          1, 0
+       ),
+       FAI = if_else(
+         d5$Q71.1_3_FT_notPnotQ == 3 & d5$Q71.1_4_FF_notPQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q72.1_3_FT_PQ == 3 & d5$Q72.1_4_FF_PnotQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q73.1_3_FT_PnotQ == 3 & d5$Q73.1_4_FF_PQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q74.1_3_FT_notPQ == 3 & d5$Q74.1_4_FF_notPnotQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q75.1_3_FT_notPnotQ == 3 & d5$Q75.1_4_FF_notPQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q76.1_3_FT_PQ == 3 & d5$Q76.1_4_FF_PnotQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q77.1_3_FT_PnotQ == 3 & d5$Q77.1_4_FF_PQ == 3,
+         FAI + 1, FAI + 0
+       ))
+
+##Antecedent Matching Index (FAI): Antecedent Matching Index (AMI) : 「notPQ, notPnotQを無関係」と判断した数と，「PQ, PnotQ」を無関係と判断した数の差
+d5 <- mutate(d5,
+       AMI = if_else(
+         d5$Q70.1_3_FT_notPQ == 3 & d5$Q70.1_4_FF_notPnotQ == 3,
+          1, 0
+       ),
+       AMI = if_else(
+         d5$Q70.1_1_TT_PQ == 3 & d5$Q70.1_2_TF_PnotQ == 3,
+          AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q71.1_3_FT_notPnotQ == 3 & d5$Q71.1_4_FF_notPQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q71.1_2_TF_PQ ==3 & d5$Q71.1_1_TT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q72.1_1_TT_notPQ == 3 & d5$Q72.1_2_TF_notPnotQ ==3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q72.1_3_FT_PQ == 3 & d5$Q72.1_4_FF_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q73.1_2_TF_notPQ == 3 & d5$Q73.1_1_TT_notPnotQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q73.1_4_FF_PQ == 3 & d5$Q73.1_3_FT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q74.1_3_FT_notPQ == 3 & d5$Q74.1_4_FF_notPnotQ == 3,
+          AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q74.1_1_TT_PQ == 3 & d5$Q74.1_2_TF_PnotQ == 3,
+          AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q75.1_3_FT_notPnotQ == 3 & d5$Q75.1_4_FF_notPQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q75.1_2_TF_PQ ==3 & d5$Q75.1_1_TT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q76.1_1_TT_notPQ == 3 & d5$Q76.1_2_TF_notPnotQ ==3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q76.1_3_FT_PQ == 3 & d5$Q76.1_4_FF_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q77.1_2_TF_notPQ == 3 & d5$Q77.1_1_TT_notPnotQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q77.1_4_FF_PQ == 3 & d5$Q77.1_3_FT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ))
+
+## Consequent Matching Index (CMI):「PnotQ, notPnotQを無関係」と判断した数と，「PQ, notQ」を無関係と判断した数の差
+d5 <- mutate(d5,
+       CMI = if_else(
+         d5$Q70.1_2_TF_PnotQ == 3 & d5$Q70.1_4_FF_notPnotQ == 3,
+          1, 0
+       ),
+       CMI = if_else(
+         d5$Q70.1_1_TT_PQ == 3 & d5$Q70.1_3_FT_notPQ == 3,
+          CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q71.1_3_FT_notPnotQ == 3 & d5$Q71.1_1_TT_PnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q71.1_2_TF_PQ ==3 & d5$Q71.1_4_FF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q72.1_4_FF_PnotQ == 3 & d5$Q72.1_2_TF_notPnotQ ==3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q72.1_3_FT_PQ == 3 & d5$Q72.1_1_TT_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q73.1_3_FT_PnotQ == 3 & d5$Q73.1_1_TT_notPnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q73.1_4_FF_PQ == 3 & d5$Q73.1_2_TF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q74.1_2_TF_PnotQ == 3 & d5$Q74.1_4_FF_notPnotQ == 3,
+          CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q74.1_1_TT_PQ == 3 & d5$Q74.1_3_FT_notPQ == 3,
+          CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q75.1_3_FT_notPnotQ == 3 & d5$Q75.1_1_TT_PnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q75.1_2_TF_PQ ==3 & d5$Q75.1_4_FF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q76.1_4_FF_PnotQ == 3 & d5$Q76.1_2_TF_notPnotQ ==3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q76.1_3_FT_PQ == 3 & d5$Q76.1_1_TT_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q77.1_3_FT_PnotQ == 3 & d5$Q77.1_1_TT_notPnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q77.1_4_FF_PQ == 3 & d5$Q77.1_2_TF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ))
+
+#各スコアの記述統計量
+skim(d5[,45:48])
+```
+
+## Truth Table ScoreとOSPAN Scoreの相関
+```{r cor TT and OSPAN}
+#Logical Index
+##Logical Indexと部分加点法スコアとの相関
+plot(d5$OSPAN_PartialScore, d5$LI,xlab="OSPAN Partial Score", ylab="Logical Index")#散布図
+cor_LI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$LI) #相関係数
+cor_LI_Partial
+
+##Logical Indexと完全加点法スコアとの相関
+plot(d5$OSPAN_AbsoluteScore, d5$LI,xlab="OSPAN Absolute Score", ylab="Logical Index") #散布図
+cor_LI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$LI) #相関係数
+cor_LI_Absolute
+
+```
+
+
+-真理値表課題とOSPANの相関  
+-- Logical Index: Logical Index (LI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.17, p値= 0.1 , t値 = 2
+完全加点法では 相関係数= 0.29, p値 = 0.004 , t値 = 3であり，
+完全加点法での得点が高いほど，LIが高くなることが示された。  
+
+
+```{r}
+#False Antecedent Index
+##False Antecedent Indexと部分加点法スコアとの相関
+plot(d5$OSPAN_PartialScore, d5$FAI,xlab="OSPAN Partial Score", ylab="False Antecedent Index") #散布図
+cor_FAI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$FAI) #相関係数
+cor_FAI_Partial
+
+##False Antecedent Indexと完全加点法スコアとの相関
+plot(d5$OSPAN_AbsoluteScore, d5$FAI,xlab="OSPAN Absolute Score", ylab="False Antecedent Index") #散布図
+cor_FAI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$FAI) #相関係数
+cor_FAI_Absolute
+```
+
+-真理値表課題とOSPANの相関  
+-- False Antecedent Index (FAI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.011, p値= 0.9 , t値 = 0.1,
+完全加点法では 相関係数= 0.063, p値 = 0.5 , t値 = 0.6であり，
+FAIは相関がみられなかった 
+
+```{r}
+#AMI
+#AMIと部分加点法
+plot(d5$OSPAN_PartialScore, d5$AMI,xlab="OSPAN Partial Score", ylab="Antecedent Matching Index") 
+#散布図
+cor_AMI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$AMI) #相関係数
+cor_AMI_Partial
+
+##AMIと完全加点法
+plot(d5$OSPAN_AbsoluteScore, d5$AMI,xlab="OSPAN Absolute Score", ylab="Antecedent Matching Index") #散布図
+cor_AMI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$AMI) #相関係数
+cor_AMI_Absolute
+```
+
+-真理値表課題とOSPANの相関  
+-- Antecedent Matching Index (AMI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = -0.35, p値= 6e-04 , t値 = 4
+完全加点法では 相関係数= -0.43, p値 = 2e-05 , t値 = 5であり，
+完全加点法での得点が高いほど，AMIが低くなることが示された。 
+
+
+```{r}
+#CMI
+#CMIと部分加点法
+plot(d5$OSPAN_PartialScore, d5$CMI,xlab="OSPAN Partial Score", ylab="Consequent Matching Index") 
+#散布図
+cor_CMI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$CMI) #相関係数
+cor_CMI_Partial
+
+##AMIと完全加点法
+plot(d5$OSPAN_AbsoluteScore, d5$CMI,xlab="OSPAN Absolute Score", ylab="Consequent Matching Index") #散布図
+cor_CMI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$CMI) #相関係数
+cor_CMI_Absolute
+```
+
+-真理値表課題とOSPANの相関  
+-- Consequent Matching Index (CMI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = -0.25, p値= 0.02 , t値 = 2
+完全加点法では 相関係数= -0.35, p値 = 5e-04 , t値 = 4であり，
+完全加点法での得点が高いほど，CMIが低くなることが示された。 
+
+
+# 確率判断課題  
+```{r Probability Score, include=FALSE}
+#確率判断課題をスコアリングしたデータセットd6の作成
+d6 <- d5
+
+#回答を条件付き確率=CD, 連言=Conj, 双条件=BC, 実質含意=MI, その他=Otherに分類
+# HH条件1問目の回答を分類し，分類結果を"Probability_HH_01"に示す
+d6 <- mutate(d6, Probability_HH_01 = recode(Q79.1_1_Prob_HH, '90'="CD", '45'="Conj",'60' = "BC", '95'="MI",.default="Other")) 
+
+d6 <- mutate(d6, Probability_HH_02 = recode(Q80.1_1_Prob_HH, '89'="CD", '40'="Conj",'55' = "BC", '95'="MI",.default="Other")) 
+
+#HL
+d6 <- mutate(d6, Probability_HL_01 = recode(Q81.1_1_Prob_HL, '50'="CD", '45'="Conj",'47' = "BC", '55'="MI",.default="Other"))
+
+d6 <- mutate(d6, Probability_HL_02 = recode(Q82.1_1_Prob_HL, '50'="CD", '40'="Conj",'44' = "BC", '60'="MI",.default="Other"))
+
+#LH
+d6 <- mutate(d6, Probability_LH_01 = recode(Q83.1_1_Prob_LH, '90'="CD", '5'="Conj",'9' = "BC", '99'="MI",'100'="MI",.default="Other"))
+
+d6 <- mutate(d6, Probability_LH_02 = recode(Q84.1_1_Prob_LH, '80'="CD", '4'="Conj",'8' = "BC", '99'="MI",.default="Other"))
+
+#LL
+d6 <- mutate(d6, Probability_LL_01 = recode(Q85.1_1_Prob_LL, '50'="CD", '5'="Conj",'8' = "BC", '96'="MI",.default="Other"))
+
+d6 <- mutate(d6, Probability_LL_02 = recode(Q86.1_1_Prob_LL, '50'="CD", '4'="Conj",'7' = "BC", '96'="MI",.default="Other"))
+
+#確率判断の回答数
+##Conditional probabilityで判断した数
+d6$Probability_ConditionalProbability <- rowSums(filter(select(d6, contains("Probability")))=="CD")
+
+##連言
+d6$Probability_ConjunctionProbability <- rowSums(filter(select(d6, contains("Probability")))=="Conj")
+
+##双条件
+d6$Probability_BiconditionalProbability <- rowSums(filter(select(d6, contains("Probability")))=="BC")
+
+##実質含意
+d6$Probability_MaterialimplicationProbability <- rowSums(filter(select(d6, contains("Probability")))=="MI")
+
+##その他
+d6$Probability_other<-rowSums(filter(select(d6,contains("Probability")))=="Other")
+
+```
+
+```{r probability summary}
+#確率判断課題：各回答平均回数（0〜8）
+skim(d6[,57:61])
+
+# 各判断の頻度と％を表にまとめる
+ProbTable <- d6[,-(2:48)]
+ProbTable <- ProbTable[,-(10:14)]
+ProbTable <- ProbTable %>% 
+  pivot_longer(cols = -c(ResponseId),names_to = c("Task","High_Low","No"),names_sep = "_")
+ProbTable <- xtabs(~High_Low+value,ProbTable)#データを表形式にする
+
+ftable(ProbTable) #各判断の頻度
+ftable(addmargins(prop.table((ProbTable), 1))) #各判断の%
+```
+
+## 確率判断の回答とOSPAN Scoreの相関
+```{r probability and OSPAN}
+#Conditional probability
+##Conditional probabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_ConditionalProbability,xlab="OSPAN Partial Score", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_Partial
+
+##Conditional probabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_ConditionalProbability,xlab="OSPAN Absolute Score", ylab="Conditional Probability") #散布図
+cor_ConditionalProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_Absolute
+```
+
+-確率判断課題とOSPANの相関 
+--Conditional probability (CD)確率判断 とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.041, p値= 0.7 , t値 = 0.4
+完全加点法では 相関係数= 0.12, p値 = 0.3 , t値 = 1であり，
+
+
+```{r probability and OSPAN}
+#Conjunctive probability
+##Conjunctive probabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_ConjunctionProbability,xlab="OSPAN Partial Score", ylab="Conditional Probability")#散布図
+cor_ConjunctionProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_ConjunctionProbability) #相関係数
+cor_ConjunctionProbability_Partial
+
+##Conditional probabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_ConjunctionProbability,xlab="OSPAN Absolute Score", ylab="Conditional Probability") #散布図
+cor_ConjunctionProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_ConjunctionProbability) #相関係数
+cor_ConjunctionProbability_Absolute
+```
+
+-確率判断課題とOSPANの相関 
+-- ConjunctionProbability  (Conj) 連言とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.082, p値= 0.4 , t値 = 0.8
+完全加点法では 相関係数= 0.05, p値 = 0.6 , t値 = 0.5であり，
+
+```{r probability and OSPAN}
+#BiconditionalProbability
+##BiconditionalProbabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_BiconditionalProbability,xlab="OSPAN Partial Score", ylab="Biconditional Probability")#散布図
+cor_BiconditionalProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_BiconditionalProbability) #相関係数
+cor_BiconditionalProbability_Partial
+
+##BiconditionalProbabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_BiconditionalProbability,xlab="OSPAN Absolute Score", ylab="Biconditional Probability")#散布図
+cor_BiconditionalProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_BiconditionalProbability) #相関係数
+cor_BiconditionalProbability_Absolute
+```
+
+-確率判断課題とOSPANの相関 
+-- BiconditionalProbability(BD)双条件 とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.052, p値= 0.6 , t値 = 0.5
+完全加点法では 相関係数= 0.018, p値 = 0.9 , t値 = 0.2であり，
+
+
+```{r probability and OSPAN}
+#MaterialimplicationProbability
+##MaterialimplicationProbabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_MaterialimplicationProbability,xlab="OSPAN Partial Score", ylab="Materialimplication Probability")#散布図
+cor_MaterialimplicationProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_MaterialimplicationProbability) #相関係数
+cor_MaterialimplicationProbability_Partial
+
+##BiconditionalProbabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_MaterialimplicationProbability,xlab="OSPAN Absolute Score", ylab="Materialimplication Probability")#散布図
+cor_MaterialimplicationProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_MaterialimplicationProbability) #相関係数
+cor_MaterialimplicationProbability_Absolute
+```
+-確率判断課題とOSPANの相関 
+-- MaterialimplicationProbability(MI)実質含意 とOSPAN得点の相関は，
+部分加点法では 相関係数 = -0.071, p値= 0.5 , t値 = -0.7
+完全加点法では 相関係数= -0.089, p値 = 0.4 , t値 = -0.9であり，
+
+
+
+
+
+
+## 確率判断の回答と真理値表課題の相関
+```{r probability and truth table}
+#Conditional probability
+##Conditional probabilityとLIとの相関
+plot(d6$LI, d6$Probability_ConditionalProbability,xlab="LI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_LI <- cor.test(d6$LI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_LI
+
+##Conditional probabilityとFAIとの相関
+plot(d6$FAI, d6$Probability_ConditionalProbability,xlab="FAI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_FAI <- cor.test(d6$FAI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_FAI
+
+##Conditional probabilityとAMIとの相関
+plot(d6$AMI, d6$Probability_ConditionalProbability,xlab="AMI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_AMI <- cor.test(d6$AMI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_AMI
+
+##Conditional probabilityとCMIとの相関
+plot(d6$CMI, d6$Probability_ConditionalProbability,xlab="CMI", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_CMI <- cor.test(d6$CMI,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_CMI
+
+### Conjunctive probabilityについても，真理値表課題の指標との相関を見る
+```
+

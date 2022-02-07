@@ -1,0 +1,333 @@
+---
+title: "WMと真理地表"
+author: "渡邊元樹"
+date: "2021/12/20"
+output: html_document
+---
+
+# 真理値表課題
+```{r Truth Table Data,include=TRUE}
+##今後の分析に必要な列（参加者のID, OSPANのabsoluteとpartial score, 真理値表，確率判断課題）を選択
+d5 <- d4[,-(1:8)]
+d5 <- d5[,-(2:19)]
+d5 <- d5[,-(43:105)]
+d5 <- d5[,-(44:48)]
+
+# 各判断の頻度と％を表にまとめる (Evans et al., 2007のTable 4a)
+TrTable <- d5[,-(34:44)]
+TrTable <- TrTable %>% 
+  pivot_longer(cols = -c(ResponseId),names_to = c("Question01","Question02","Case","Matching"),names_sep = "_")
+TrTable<-xtabs(~Case+Matching+value,TrTable) #データを表形式にする
+
+ftable(TrTable) #各判断の頻度
+ftable(addmargins(prop.table(TrTable, c(1, 2)), 3)) #各判断の%
+```
+
+
+## Truth Table Score
+```{r Truth Table Score}
+#Truth Tableをスコアリングしたデータセットd5の作成
+
+#Evans (2007) の指標
+##LogicalIndex (TTを真・TFを偽と判断した数)
+d5 <- mutate(d5,
+       LI = if_else(
+         d5$Q70.1_1_TT_PQ == 1 & d5$Q70.1_2_TF_PnotQ == 2,
+          1, 0
+       ),
+       LI = if_else(
+         d5$Q71.1_1_TT_PnotQ == 1 & d5$Q71.1_2_TF_PQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q72.1_1_TT_notPQ == 1 & d5$Q72.1_2_TF_notPnotQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q73.1_1_TT_notPnotQ == 1 & d5$Q73.1_2_TF_notPQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q74.1_1_TT_PQ == 1 & d5$Q74.1_2_TF_PnotQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q75.1_1_TT_PnotQ == 1 & d5$Q75.1_2_TF_PQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q76.1_1_TT_notPQ == 1 & d5$Q76.1_2_TF_notPnotQ == 2,
+         LI + 1, LI + 0
+       ),
+       LI = if_else(
+         d5$Q77.1_1_TT_notPnotQ == 1 & d5$Q77.1_2_TF_notPQ == 2,
+         LI + 1, LI + 0
+       ))
+
+##False Antecedent Index (FAI): FT・FFを空とした数
+d5 <- mutate(d5,
+       FAI = if_else(
+         d5$Q70.1_3_FT_notPQ == 3 & d5$Q70.1_4_FF_notPnotQ == 3,
+          1, 0
+       ),
+       FAI = if_else(
+         d5$Q71.1_3_FT_notPnotQ == 3 & d5$Q71.1_4_FF_notPQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q72.1_3_FT_PQ == 3 & d5$Q72.1_4_FF_PnotQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q73.1_3_FT_PnotQ == 3 & d5$Q73.1_4_FF_PQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q74.1_3_FT_notPQ == 3 & d5$Q74.1_4_FF_notPnotQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q75.1_3_FT_notPnotQ == 3 & d5$Q75.1_4_FF_notPQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q76.1_3_FT_PQ == 3 & d5$Q76.1_4_FF_PnotQ == 3,
+         FAI + 1, FAI + 0
+       ),
+       FAI = if_else(
+         d5$Q77.1_3_FT_PnotQ == 3 & d5$Q77.1_4_FF_PQ == 3,
+         FAI + 1, FAI + 0
+       ))
+
+## Antecedent Matching Index (AMI) : 「notPQ, notPnotQを無関係」と判断した数と，「PQ, PnotQ」を無関係と判断した数の差
+d5 <- mutate(d5,
+       AMI = if_else(
+         d5$Q70.1_3_FT_notPQ == 3 & d5$Q70.1_4_FF_notPnotQ == 3,
+          1, 0
+       ),
+       AMI = if_else(
+         d5$Q70.1_1_TT_PQ == 3 & d5$Q70.1_2_TF_PnotQ == 3,
+          AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q71.1_3_FT_notPnotQ == 3 & d5$Q71.1_4_FF_notPQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q71.1_2_TF_PQ ==3 & d5$Q71.1_1_TT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q72.1_1_TT_notPQ == 3 & d5$Q72.1_2_TF_notPnotQ ==3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q72.1_3_FT_PQ == 3 & d5$Q72.1_4_FF_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q73.1_2_TF_notPQ == 3 & d5$Q73.1_1_TT_notPnotQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q73.1_4_FF_PQ == 3 & d5$Q73.1_3_FT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q74.1_3_FT_notPQ == 3 & d5$Q74.1_4_FF_notPnotQ == 3,
+          AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q74.1_1_TT_PQ == 3 & d5$Q74.1_2_TF_PnotQ == 3,
+          AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q75.1_3_FT_notPnotQ == 3 & d5$Q75.1_4_FF_notPQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q75.1_2_TF_PQ ==3 & d5$Q75.1_1_TT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q76.1_1_TT_notPQ == 3 & d5$Q76.1_2_TF_notPnotQ ==3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q76.1_3_FT_PQ == 3 & d5$Q76.1_4_FF_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ),
+       AMI = if_else(
+         d5$Q77.1_2_TF_notPQ == 3 & d5$Q77.1_1_TT_notPnotQ == 3,
+         AMI + 1, AMI + 0
+       ),
+       AMI = if_else(
+         d5$Q77.1_4_FF_PQ == 3 & d5$Q77.1_3_FT_PnotQ == 3,
+         AMI - 1, AMI - 0
+       ))
+
+## Consequent Matching Index (CMI):「PnotQ, notPnotQを無関係」と判断した数と，「PQ, notPQ」を無関係と判断した数の差
+d5 <- mutate(d5,
+       CMI = if_else(
+         d5$Q70.1_2_TF_PnotQ == 3 & d5$Q70.1_4_FF_notPnotQ == 3,
+          1, 0
+       ),
+       CMI = if_else(
+         d5$Q70.1_1_TT_PQ == 3 & d5$Q70.1_3_FT_notPQ == 3,
+          CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q71.1_3_FT_notPnotQ == 3 & d5$Q71.1_1_TT_PnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q71.1_2_TF_PQ ==3 & d5$Q71.1_4_FF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q72.1_4_FF_PnotQ == 3 & d5$Q72.1_2_TF_notPnotQ ==3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q72.1_3_FT_PQ == 3 & d5$Q72.1_1_TT_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q73.1_3_FT_PnotQ == 3 & d5$Q73.1_1_TT_notPnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q73.1_4_FF_PQ == 3 & d5$Q73.1_2_TF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q74.1_2_TF_PnotQ == 3 & d5$Q74.1_4_FF_notPnotQ == 3,
+          CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q74.1_1_TT_PQ == 3 & d5$Q74.1_3_FT_notPQ == 3,
+          CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q75.1_3_FT_notPnotQ == 3 & d5$Q75.1_1_TT_PnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q75.1_2_TF_PQ ==3 & d5$Q75.1_4_FF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q76.1_4_FF_PnotQ == 3 & d5$Q76.1_2_TF_notPnotQ ==3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q76.1_3_FT_PQ == 3 & d5$Q76.1_1_TT_notPQ == 3,
+         CMI - 1, CMI - 0
+       ),
+       CMI = if_else(
+         d5$Q77.1_3_FT_PnotQ == 3 & d5$Q77.1_1_TT_notPnotQ == 3,
+         CMI + 1, CMI + 0
+       ),
+       CMI = if_else(
+         d5$Q77.1_4_FF_PQ == 3 & d5$Q77.1_2_TF_notPQ == 3,
+         CMI - 1, CMI - 0
+       ))
+
+#各スコアの記述統計量
+skim(d5[,45:48])
+```
+
+## Truth Table ScoreとOSPAN Scoreの相関
+```{r cor TT and OSPAN}
+#Logical Index
+##Logical Indexと部分加点法スコアとの相関
+plot(d5$OSPAN_PartialScore, d5$LI,xlab="OSPAN Partial Score", ylab="Logical Index")#散布図
+cor_LI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$LI) #相関係数
+cor_LI_Partial
+
+##Logical Indexと完全加点法スコアとの相関
+plot(d5$OSPAN_AbsoluteScore, d5$LI,xlab="OSPAN Absolute Score", ylab="Logical Index") #散布図
+cor_LI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$LI) #相関係数
+cor_LI_Absolute
+
+```
+
+
+-真理値表課題とOSPANの相関  
+-- Logical Index: Logical Index (LI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.18, p値= 0.09 , t値 = 2
+完全加点法では 相関係数= 0.32, p値 = 0.003 , t値 = 3であり，
+完全加点法での得点が高いほど，LIが高くなることが示された。  
+
+
+```{r}
+#False Antecedent Index
+##False Antecedent Indexと部分加点法スコアとの相関
+plot(d5$OSPAN_PartialScore, d5$FAI,xlab="OSPAN Partial Score", ylab="False Antecedent Index") #散布図
+cor_FAI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$FAI) #相関係数
+cor_FAI_Partial
+
+##False Antecedent Indexと完全加点法スコアとの相関
+plot(d5$OSPAN_AbsoluteScore, d5$FAI,xlab="OSPAN Absolute Score", ylab="False Antecedent Index") #散布図
+cor_FAI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$FAI) #相関係数
+cor_FAI_Absolute
+```
+
+-真理値表課題とOSPANの相関  
+-- False Antecedent Index (FAI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.064, p値= 0.6 , t値 = 0.6,
+完全加点法では 相関係数= 0.14, p値 = 0.2 , t値 = 1であり，
+FAIは相関がみられなかった 
+
+```{r}
+#AMI
+#AMIと部分加点法
+plot(d5$OSPAN_PartialScore, d5$AMI,xlab="OSPAN Partial Score", ylab="Antecedent Matching Index") 
+#散布図
+cor_AMI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$AMI) #相関係数
+cor_AMI_Partial
+
+##AMIと完全加点法
+plot(d5$OSPAN_AbsoluteScore, d5$AMI,xlab="OSPAN Absolute Score", ylab="Antecedent Matching Index") #散布図
+cor_AMI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$AMI) #相関係数
+cor_AMI_Absolute
+```
+
+-真理値表課題とOSPANの相関  
+-- Antecedent Matching Index (AMI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = -0.38, p値= 3e-04 , t値 = -4
+完全加点法では 相関係数= -0.45, p値 = 9e-06 , t値 = -5であり，
+完全加点法での得点が高いほど，AMIが低くなることが示された。 
+
+
+```{r}
+#CMI
+#CMIと部分加点法
+plot(d5$OSPAN_PartialScore, d5$CMI,xlab="OSPAN Partial Score", ylab="Consequent Matching Index") 
+#散布図
+cor_CMI_Partial <- cor.test(d5$OSPAN_PartialScore,d5$CMI) #相関係数
+cor_CMI_Partial
+
+##CMIと完全加点法
+plot(d5$OSPAN_AbsoluteScore, d5$CMI,xlab="OSPAN Absolute Score", ylab="Consequent Matching Index") #散布図
+cor_CMI_Absolute <- cor.test(d5$OSPAN_AbsoluteScore,d5$CMI) #相関係数
+cor_CMI_Absolute
+```
+
+-真理値表課題とOSPANの相関  
+-- Consequent Matching Index (CMI) とOSPAN得点の相関は，
+部分加点法では 相関係数 = -0.23, p値= 0.03 , t値 = -2
+完全加点法では 相関係数= -0.34, p値 = 0.001 , t値 = -3であり，
+完全加点法での得点が高いほど，CMIが低くなることが示された。 
+
+
+
+
+
+
+
+
+
+
+
+

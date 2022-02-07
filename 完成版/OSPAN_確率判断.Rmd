@@ -1,0 +1,143 @@
+---
+title: "確率判断"
+author: "渡邊元樹"
+date: "2021/12/20"
+output: html_document
+---
+
+```{r}
+d6$Q81.1_1_Prob_HL
+```
+
+# 確率判断課題  
+```{r Probability Score, include=FALSE}
+#確率判断課題をスコアリングしたデータセットd6の作成
+d6 <- d5
+
+#回答を条件付き確率=CD, 連言=Conj, 双条件=BC, 実質含意=MI, その他=Otherに分類
+# HH条件1問目の回答を分類し，分類結果を"Probability_HH_01"に示す
+d6 <- mutate(d6, Probability_HH_01 = recode(Q79.1_1_Prob_HH, '90'="CD", '45'="Conj",'60' = "BC", '95'="MI",.default="Other")) 
+
+d6 <- mutate(d6, Probability_HH_02 = recode(Q80.1_1_Prob_HH, '89'="CD", '40'="Conj",'55' = "BC", '95'="MI",.default="Other")) 
+
+#HL
+d6 <- mutate(d6, Probability_HL_01 = recode(Q81.1_1_Prob_HL, '50'="CD", '45'="Conj",'47' = "BC", '55'="MI",.default="Other"))
+
+d6 <- mutate(d6, Probability_HL_02 = recode(Q82.1_1_Prob_HL, '50'="CD", '40'="Conj",'44' = "BC", '60'="MI",.default="Other"))
+
+#LH
+d6 <- mutate(d6, Probability_LH_01 = recode(Q83.1_1_Prob_LH, '90'="CD", '5'="Conj",'9' = "BC", '99'="MI",'100'="MI",.default="Other"))
+
+d6 <- mutate(d6, Probability_LH_02 = recode(Q84.1_1_Prob_LH, '80'="CD", '4'="Conj",'8' = "BC", '99'="MI",.default="Other"))
+
+#LL
+d6 <- mutate(d6, Probability_LL_01 = recode(Q85.1_1_Prob_LL, '50'="CD", '5'="Conj",'8' = "BC", '96'="MI",.default="Other"))
+
+d6 <- mutate(d6, Probability_LL_02 = recode(Q86.1_1_Prob_LL, '50'="CD", '4'="Conj",'7' = "BC", '96'="MI",.default="Other"))
+
+#確率判断の回答数
+##Conditional probabilityで判断した数
+d6$Probability_ConditionalProbability <- rowSums(filter(select(d6, contains("Probability")))=="CD")
+
+##連言
+d6$Probability_ConjunctionProbability <- rowSums(filter(select(d6, contains("Probability")))=="Conj")
+
+##双条件
+d6$Probability_BiconditionalProbability <- rowSums(filter(select(d6, contains("Probability")))=="BC")
+
+##実質含意
+d6$Probability_MaterialimplicationProbability <- rowSums(filter(select(d6, contains("Probability")))=="MI")
+
+##その他
+d6$Probability_other<-rowSums(filter(select(d6,contains("Probability")))=="Other")
+
+```
+
+```{r probability summary}
+#確率判断課題：各回答平均回数（0〜8）
+skim(d6[,57:61])
+
+# 各判断の頻度と％を表にまとめる
+ProbTable <- d6[,-(2:48)]
+ProbTable <- ProbTable[,-(10:14)]
+ProbTable <- ProbTable %>% 
+  pivot_longer(cols = -c(ResponseId),names_to = c("Task","High_Low","No"),names_sep = "_")
+ProbTable <- xtabs(~High_Low+value,ProbTable)#データを表形式にする
+
+ftable(ProbTable) #各判断の頻度
+ftable(addmargins(prop.table((ProbTable), 1))) #各判断の%
+```
+
+## 確率判断の回答とOSPAN Scoreの相関
+```{r probability and OSPAN}
+#Conditional probability
+##Conditional probabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_ConditionalProbability,xlab="OSPAN Partial Score", ylab="Conditional Probability")#散布図
+cor_ConditionalProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_Partial
+
+##Conditional probabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_ConditionalProbability,xlab="OSPAN Absolute Score", ylab="Conditional Probability") #散布図
+cor_ConditionalProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_ConditionalProbability) #相関係数
+cor_ConditionalProbability_Absolute
+```
+
+-確率判断課題とOSPANの相関 
+--Conditional probability (CD)確率判断 とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.043, p値= 0.7 , t値 = 0.4
+完全加点法では 相関係数= 0.13, p値 = 0.2 , t値 = 1であり，
+
+
+```{r probability and OSPAN}
+#Conjunctive probability
+##Conjunctive probabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_ConjunctionProbability,xlab="OSPAN Partial Score", ylab="Conditional Probability")#散布図
+cor_ConjunctionProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_ConjunctionProbability) #相関係数
+cor_ConjunctionProbability_Partial
+
+##Conditional probabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_ConjunctionProbability,xlab="OSPAN Absolute Score", ylab="Conditional Probability") #散布図
+cor_ConjunctionProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_ConjunctionProbability) #相関係数
+cor_ConjunctionProbability_Absolute
+```
+
+-確率判断課題とOSPANの相関 
+-- ConjunctionProbability  (Conj) 連言とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.057, p値= 0.6 , t値 = 0.5
+完全加点法では 相関係数= 0.016, p値 = 0.9 , t値 = 0.1であり，
+
+```{r probability and OSPAN}
+#BiconditionalProbability
+##BiconditionalProbabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_BiconditionalProbability,xlab="OSPAN Partial Score", ylab="Biconditional Probability")#散布図
+cor_BiconditionalProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_BiconditionalProbability) #相関係数
+cor_BiconditionalProbability_Partial
+
+##BiconditionalProbabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_BiconditionalProbability,xlab="OSPAN Absolute Score", ylab="Biconditional Probability")#散布図
+cor_BiconditionalProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_BiconditionalProbability) #相関係数
+cor_BiconditionalProbability_Absolute
+```
+
+-確率判断課題とOSPANの相関 
+-- BiconditionalProbability(BD)双条件 とOSPAN得点の相関は，
+部分加点法では 相関係数 = 0.067, p値= 0.5 , t値 = 0.6
+完全加点法では 相関係数= 0.035, p値 = 0.7 , t値 = 0.3であり，
+
+
+```{r probability and OSPAN}
+#MaterialimplicationProbability
+##MaterialimplicationProbabilityと部分加点法スコアとの相関
+plot(d6$OSPAN_PartialScore, d6$Probability_MaterialimplicationProbability,xlab="OSPAN Partial Score", ylab="Materialimplication Probability")#散布図
+cor_MaterialimplicationProbability_Partial <- cor.test(d6$OSPAN_PartialScore,d6$Probability_MaterialimplicationProbability) #相関係数
+cor_MaterialimplicationProbability_Partial
+
+##BiconditionalProbabilityと完全加点法スコアとの相関
+plot(d6$OSPAN_AbsoluteScore, d6$Probability_MaterialimplicationProbability,xlab="OSPAN Absolute Score", ylab="Materialimplication Probability")#散布図
+cor_MaterialimplicationProbability_Absolute <- cor.test(d6$OSPAN_AbsoluteScore,d6$Probability_MaterialimplicationProbability) #相関係数
+cor_MaterialimplicationProbability_Absolute
+```
+-確率判断課題とOSPANの相関 
+-- MaterialimplicationProbability(MI)実質含意 とOSPAN得点の相関は，
+部分加点法では 相関係数 = -0.065, p値= 0.5 , t値 = -0.6
+完全加点法では 相関係数= -0.083S, p値 = 0.4 , t値 = -0.8であり，
